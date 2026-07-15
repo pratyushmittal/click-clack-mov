@@ -11,6 +11,14 @@ The user starts by dropping a collection of video files into the application. Vl
 
 The timestamped transcript explains what was said, while the screen-cap roll shows what was happening. These artifacts are sent together to an LLM, which evaluates the complete collection, identifies the strongest moments, and recommends the best sections to include in the final video.
 
+## User interface
+
+The main screen should keep the input process focused around three sections:
+
+- **Footage** — a large drop area for adding all source video files.
+- **Vibe** — a text input describing what the user wants the finished video to feel like and which kinds of moments should be kept.
+- **Target length** — a duration input defining the desired length of the finished video.
+
 ## Workflow
 
 1. Drop in a collection of raw video files.
