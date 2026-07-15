@@ -12,6 +12,8 @@ run FFmpeg and produce the final movie.
 - `npm run build` — production build
 - `npm run preview` — preview the build
 - `npm run lint` — Prettier check + ESLint
+- `npm test` — Playwright end-to-end tests
+- `npm run test:e2e:ui` — Playwright interactive test runner
 - `npm run format` — Prettier write
 
 ## Tech Stack

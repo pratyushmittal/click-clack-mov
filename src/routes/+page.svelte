@@ -1,6 +1,7 @@
 <script>
 	import FileDropzone from '$lib/components/FileDropzone.svelte';
 	import MovieResult from '$lib/components/MovieResult.svelte';
+	import ProcessingStage from '$lib/components/ProcessingStage.svelte';
 	import { createMovie, getMovieStatus } from '$lib/js/movie-maker.js';
 
 	let files = $state([]);
@@ -10,25 +11,14 @@
 	let processing = $state(false);
 	let error = $state('');
 	let result = $state(null);
-	let progressIndex = $state(0);
 	let importLabel = $state('');
-	let processingStatus = $state('');
-	let intentHistory = $state([]);
 	let activeJobId = $state('');
-	let progressTimer;
+	let jobStatus = $state({});
 
 	let combinedDuration = $derived(
 		files.reduce((total, item) => total + (Number.isFinite(item.duration) ? item.duration : 0), 0)
 	);
 	let maximumTarget = $derived(Math.max(1, Math.min(combinedDuration || 1, 60 * 60)));
-
-	const progress = [
-		'Preparing your footage',
-		'Listening for the best lines',
-		'Building visual contact sheets',
-		'Finding moments that match your vibe',
-		'Assembling your first cut'
-	];
 
 	function durationLabel(seconds) {
 		const hours = Math.floor(seconds / 3600);
@@ -88,13 +78,12 @@
 
 	async function followJob(jobId) {
 		activeJobId = jobId;
-		processingStatus = 'Starting the editing pipeline';
+		jobStatus = { message: 'Starting the editing pipeline' };
 
 		while (activeJobId === jobId) {
 			try {
 				const data = await getMovieStatus(jobId);
-				processingStatus = data.status.message;
-				intentHistory = data.status.events || [];
+				jobStatus = data.status;
 			} catch (err) {
 				// The job directory may not exist during the first status request.
 				if (err.status !== 404) console.error('Could not read movie status', err);
@@ -104,6 +93,8 @@
 	}
 
 	async function submit() {
+		// A double click can arrive before the processing view replaces the form.
+		if (processing) return;
 		if (!files.length) return (error = 'Drop in at least one video first.');
 		if (files.some((item) => !Number.isFinite(item.duration))) {
 			return (error = 'Wait until the video lengths have been read.');
@@ -112,12 +103,7 @@
 
 		processing = true;
 		error = '';
-		processingStatus = '';
-		intentHistory = [];
-		progressIndex = 0;
-		progressTimer = setInterval(() => {
-			progressIndex = Math.min(progressIndex + 1, progress.length - 1);
-		}, 8000);
+		jobStatus = {};
 
 		try {
 			const data = await createMovie({
@@ -133,11 +119,9 @@
 		} catch (err) {
 			error = err.message || 'Something went wrong while making your movie.';
 		} finally {
-			clearInterval(progressTimer);
 			activeJobId = '';
 			processing = false;
 			importLabel = '';
-			processingStatus = '';
 		}
 	}
 
@@ -148,9 +132,8 @@
 		targetEdited = false;
 		result = null;
 		error = '';
-		processingStatus = '';
-		intentHistory = [];
 		activeJobId = '';
+		jobStatus = {};
 	}
 </script>
 
@@ -170,80 +153,66 @@
 			<MovieResult {result} onReset={reset} />
 		{:else}
 			<div class="composer">
-				<FileDropzone {files} onAdd={addFiles} onRemove={removeFile} />
-				<div class="controls">
-					<div class="vibe-input">
-						<label for="vibe"><i></i> Vibe</label>
-						<input
-							id="vibe"
-							bind:value={vibe}
-							onkeydown={(event) => event.key === 'Enter' && !processing && submit()}
-							placeholder="Warm, candid, keep the funny travel moments…"
-							maxlength="1000"
-						/>
-						<button type="button" disabled={processing} aria-label="Make my movie" onclick={submit}
-							><svg
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg
-							></button
-						>
-					</div>
-
-					<div class="target-row">
-						<div class="target-control">
-							<div class="target-label">
-								<span>Target output</span><strong
-									>{targetSeconds ? durationLabel(targetSeconds) : '—'}</strong
-								>
-							</div>
+				{#if processing}
+					<ProcessingStage
+						{files}
+						status={jobStatus}
+						message={importLabel || jobStatus.message || 'Preparing your footage'}
+					/>
+				{:else}
+					<FileDropzone {files} onAdd={addFiles} onRemove={removeFile} />
+					<div class="controls">
+						<div class="vibe-input">
+							<label for="vibe"><i></i> Vibe</label>
 							<input
-								aria-label="Target output duration"
-								type="range"
-								min="1"
-								max={maximumTarget}
-								step="0.1"
-								value={Math.min(targetSeconds || 1, maximumTarget)}
-								disabled={!combinedDuration}
-								oninput={(event) => {
-									targetEdited = true;
-									targetSeconds = Number(event.currentTarget.value);
-								}}
+								id="vibe"
+								bind:value={vibe}
+								onkeydown={(event) => event.key === 'Enter' && submit()}
+								placeholder="Warm, candid, keep the funny travel moments…"
+								maxlength="1000"
 							/>
-							<small
-								>Starts at 25% of {combinedDuration
-									? durationLabel(combinedDuration)
-									: 'your footage'}</small
+							<button type="button" aria-label="Make my movie" onclick={submit}
+								><svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg
+								></button
 							>
 						</div>
-						<p>Your files are processed locally before AI analysis.</p>
+						<div class="target-row">
+							<div class="target-control">
+								<div class="target-label">
+									<span>Target output</span><strong
+										>{targetSeconds ? durationLabel(targetSeconds) : '—'}</strong
+									>
+								</div>
+								<input
+									aria-label="Target output duration"
+									type="range"
+									min="1"
+									max={maximumTarget}
+									step="0.1"
+									value={Math.min(targetSeconds || 1, maximumTarget)}
+									disabled={!combinedDuration}
+									oninput={(event) => {
+										targetEdited = true;
+										targetSeconds = Number(event.currentTarget.value);
+									}}
+								/>
+								<small
+									>Starts at 25% of {combinedDuration
+										? durationLabel(combinedDuration)
+										: 'your footage'}</small
+								>
+							</div>
+							<p>Your files are processed locally before AI analysis.</p>
+						</div>
 					</div>
-				</div>
+				{/if}
 			</div>
 
-			{#if processing}
-				<div class="progress" aria-live="polite">
-					<div>
-						<strong>{importLabel || processingStatus || progress[progressIndex]}</strong><span
-							>Working</span
-						>
-					</div>
-					<i><b></b></i>
-					{#if intentHistory.length}
-						<ul class="intent-list">
-							{#each intentHistory.slice(-3) as event}
-								<li>{event.message}</li>
-							{/each}
-						</ul>
-					{/if}
-					<p>
-						Long footage can take several minutes. Keep this tab open while your first cut is
-						rendered.
-					</p>
-				</div>
-			{/if}
 			{#if error}
 				<div class="error" role="alert">
 					<svg
@@ -420,77 +389,10 @@
 		color: var(--ink-500);
 		font-size: 0.68rem;
 	}
-	.progress,
 	.error {
 		margin-top: 1.25rem;
 		border-radius: 1rem;
 		padding: 1.25rem;
-	}
-	.progress {
-		border: 1px solid var(--lime-900);
-		background: rgba(29, 52, 0, 0.5);
-	}
-	.progress > div {
-		display: flex;
-		justify-content: space-between;
-		gap: 1rem;
-	}
-	.progress strong {
-		color: var(--ink-100);
-		font-size: 0.875rem;
-	}
-	.progress span {
-		color: var(--lime-400);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.62rem;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-	}
-	.progress i {
-		display: block;
-		height: 0.35rem;
-		overflow: hidden;
-		margin-top: 0.75rem;
-		border-radius: 999px;
-		background: var(--ink-900);
-	}
-	.progress b {
-		display: block;
-		width: 33%;
-		height: 100%;
-		border-radius: inherit;
-		background: var(--lime-400);
-		animation: pulse 1.4s infinite alternate;
-	}
-	.intent-list {
-		display: grid;
-		gap: 0.4rem;
-		margin: 0.85rem 0 0;
-		padding: 0;
-		list-style: none;
-	}
-	.intent-list li {
-		position: relative;
-		padding-left: 1rem;
-		color: var(--ink-200);
-		font-size: 0.75rem;
-		line-height: 1.5;
-	}
-	.intent-list li::before {
-		position: absolute;
-		top: 0.45rem;
-		left: 0;
-		width: 0.4rem;
-		height: 0.4rem;
-		border-radius: 999px;
-		background: var(--lime-400);
-		content: '';
-	}
-	.progress p {
-		margin: 0.75rem 0 0;
-		color: var(--ink-300);
-		font-size: 0.75rem;
-		line-height: 1.5;
 	}
 	.error {
 		display: flex;
@@ -515,12 +417,6 @@
 		font-size: 0.62rem;
 		letter-spacing: 0.15em;
 		text-transform: uppercase;
-	}
-	@keyframes pulse {
-		to {
-			transform: translateX(200%);
-			opacity: 0.55;
-		}
 	}
 	@media (min-width: 640px) {
 		.app-shell {

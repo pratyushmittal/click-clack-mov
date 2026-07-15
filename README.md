@@ -41,6 +41,23 @@ Open `http://localhost:5173`.
 
 Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-1` and `openai/gpt-5.6-terra` model names.
 
+## Tests
+
+Install Chromium once, then run the suite:
+
+```bash
+npx playwright install chromium
+npm test
+```
+
+The Playwright suite starts the local SvelteKit server and exercises the browser-facing workflow with small committed video fixtures. External AI calls are mocked, while file selection, metadata reading, target-length calculation, status polling, continuous video playback, contact-sheet sequencing, the editing slideshow, and the final result view run in a real Chromium browser.
+
+Use `npm run test:e2e:ui` to inspect and debug the flow interactively.
+
+## Processing view
+
+After submission, the drop area becomes a minimal processing stage with only three elements: media, a title, and one line of detail. During analysis it continuously plays the currently focused source video until that video's transcript and contact sheet are ready, then advances to the next active video. Status polling does not restart playback. During editing it shows every completed contact sheet once, then switches to a four-second slideshow of random source-video glimpses that continues independently of long-running Bash calls. Each Bash tool call also picks a light-hearted progress title while its intent remains visible as the detail.
+
 ## Performance
 
 Video analysis runs two source files at a time by default. For each source, contact-sheet generation and audio transcription also run in parallel. Oversized audio chunks are transcribed two at a time.

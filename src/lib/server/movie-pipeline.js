@@ -1,11 +1,6 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import {
-	createContactSheet,
-	extractAudioChunks,
-	getDuration,
-	hasAudio
-} from '$lib/server/media.js';
+import { createContactSheet, extractAudioChunks, getDuration } from '$lib/server/media.js';
 import { runEditingAgent, transcribeChunks } from '$lib/server/openai.js';
 import { createLogger } from '$lib/server/logger.js';
 import { updateJobStatus } from '$lib/server/job-status.js';
@@ -36,25 +31,32 @@ async function processVideo(file, index, files, importId, jobDirectory, sourceDi
 	);
 	await rename(path.join(importsRoot, importId, file.storedName), filePath);
 	const duration = await getDuration(filePath);
-	const sourceHasAudio = await hasAudio(filePath);
 	const contactSheet = path.join(jobDirectory, `contact-sheet-${index}.jpg`);
 	const audioDirectory = path.join(jobDirectory, `audio-${index}`);
 	logger.info(`Analyzing ${file.originalName}`);
+	await updateJobStatus(jobDirectory, {
+		phase: 'analyzing',
+		message: `Analyzing video ${index + 1} of ${files.length}: ${file.originalName}`,
+		processingVideo: { index, contactSheetReady: false, transcriptReady: false }
+	});
 
 	const contactSheetTask = (async () => {
-		await updateJobStatus(jobDirectory, {
-			phase: 'contact-sheets',
-			message: `Creating contact sheet ${index + 1} of ${files.length}: ${file.originalName}`
-		});
 		await createContactSheet(filePath, contactSheet, duration);
+		await updateJobStatus(jobDirectory, {
+			contactSheet: {
+				index,
+				url: `/api/jobs/${path.basename(jobDirectory)}/contact-sheets/${index}`
+			},
+			processingVideo: { index, contactSheetReady: true }
+		});
 	})();
 	const transcriptionTask = (async () => {
-		await updateJobStatus(jobDirectory, {
-			phase: 'transcribing',
-			message: `Transcribing video ${index + 1} of ${files.length}: ${file.originalName}`
-		});
 		const chunks = await extractAudioChunks(filePath, audioDirectory);
-		return transcribeChunks(chunks);
+		const segments = await transcribeChunks(chunks);
+		await updateJobStatus(jobDirectory, {
+			processingVideo: { index, transcriptReady: true }
+		});
+		return segments;
 	})();
 	const [, segments] = await Promise.all([contactSheetTask, transcriptionTask]);
 
@@ -62,26 +64,31 @@ async function processVideo(file, index, files, importId, jobDirectory, sourceDi
 		path.join(jobDirectory, `transcript-${index}.json`),
 		JSON.stringify(segments, null, 2)
 	);
+	await updateJobStatus(jobDirectory, { processingVideo: { index, done: true } });
 	return {
 		index,
 		name: file.originalName,
 		path: filePath,
 		duration,
-		hasAudio: sourceHasAudio,
 		contactSheet,
 		segments
 	};
 }
 
 async function processVideos(files, concurrency, work) {
-	const results = [];
-	for (let index = 0; index < files.length; index += concurrency) {
-		results.push(
-			...(await Promise.all(
-				files.slice(index, index + concurrency).map((file, offset) => work(file, index + offset))
-			))
-		);
+	const results = Array(files.length);
+	let nextIndex = 0;
+
+	async function processNext() {
+		while (nextIndex < files.length) {
+			// Each worker claims its next source before another asynchronous step can start.
+			const index = nextIndex;
+			nextIndex += 1;
+			results[index] = await work(files[index], index);
+		}
 	}
+
+	await Promise.all(Array.from({ length: Math.min(concurrency, files.length) }, processNext));
 	return results;
 }
 

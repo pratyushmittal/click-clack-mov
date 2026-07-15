@@ -9,10 +9,13 @@
 		"preview": "vite preview",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json"
+		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
+		"test": "playwright test",
+		"test:e2e:ui": "playwright test --ui"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.8.0",
+		"@playwright/test": "^1.61.1",
 		"@sveltejs/adapter-auto": "^3.2.2",
 		"@sveltejs/kit": "^2.5.18",
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",

@@ -15,3 +15,8 @@ build/
 
 # Locally generated footage and movies
 .vlogger/
+
+# Playwright output
+playwright-report/
+test-results/
+blob-report/

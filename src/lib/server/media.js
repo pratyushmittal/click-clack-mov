@@ -30,21 +30,6 @@ export async function getDuration(filePath) {
 	return duration;
 }
 
-export async function hasAudio(filePath) {
-	const { stdout } = await runMediaTool('ffprobe', [
-		'-v',
-		'error',
-		'-select_streams',
-		'a:0',
-		'-show_entries',
-		'stream=index',
-		'-of',
-		'csv=p=0',
-		filePath
-	]);
-	return stdout.trim().length > 0;
-}
-
 function timestampLabel(seconds) {
 	const hours = Math.floor(seconds / 3600);
 	const minutes = Math.floor((seconds % 3600) / 60);
@@ -97,12 +82,13 @@ export async function createContactSheet(filePath, outputPath, duration) {
 		if (!frameNames.length)
 			throw new Error(`Could not sample frames from ${path.basename(filePath)}`);
 
-		const rows = Math.ceil(frameNames.length / columns);
+		const sheetColumns = Math.min(columns, frameNames.length);
+		const rows = Math.ceil(frameNames.length / sheetColumns);
 		const tileHeight = frameHeight + labelHeight;
 		const composites = [];
 		for (const [index, frameName] of frameNames.entries()) {
-			const left = (index % columns) * frameWidth;
-			const top = Math.floor(index / columns) * tileHeight;
+			const left = (index % sheetColumns) * frameWidth;
+			const top = Math.floor(index / sheetColumns) * tileHeight;
 			composites.push({ input: path.join(frameDirectory, frameName), left, top });
 			composites.push({
 				input: timestampSvg(
@@ -117,7 +103,7 @@ export async function createContactSheet(filePath, outputPath, duration) {
 
 		await sharp({
 			create: {
-				width: columns * frameWidth,
+				width: sheetColumns * frameWidth,
 				height: rows * tileHeight,
 				channels: 3,
 				background: '#0b0b16'
