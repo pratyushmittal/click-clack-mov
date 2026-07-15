@@ -72,16 +72,23 @@ export async function createContactSheet(filePath, outputPath, duration) {
 	await mkdir(frameDirectory, { recursive: true });
 
 	try {
-		await runMediaTool('ffmpeg', [
+		const extraction = await runMediaTool('ffmpeg', [
 			'-y',
+			'-skip_frame',
+			'nokey',
 			'-i',
 			filePath,
 			'-vf',
-			`fps=1/${interval.toFixed(3)},scale=${frameWidth}:${frameHeight}:force_original_aspect_ratio=decrease,pad=${frameWidth}:${frameHeight}:(ow-iw)/2:(oh-ih)/2:color=0x0b0b16`,
+			`select='isnan(prev_selected_t)+gte(t-prev_selected_t,${interval.toFixed(3)})',scale=${frameWidth}:${frameHeight}:force_original_aspect_ratio=decrease,pad=${frameWidth}:${frameHeight}:(ow-iw)/2:(oh-ih)/2:color=0x0b0b16,showinfo`,
+			'-fps_mode',
+			'vfr',
 			'-q:v',
 			'4',
 			path.join(frameDirectory, 'frame-%05d.jpg')
 		]);
+		const timestamps = [...extraction.stderr.matchAll(/pts_time:([0-9.]+)/g)].map((match) =>
+			Number(match[1])
+		);
 
 		const frameNames = (await readdir(frameDirectory))
 			.filter((fileName) => fileName.endsWith('.jpg'))
@@ -99,7 +106,7 @@ export async function createContactSheet(filePath, outputPath, duration) {
 			composites.push({ input: path.join(frameDirectory, frameName), left, top });
 			composites.push({
 				input: timestampSvg(
-					timestampLabel(Math.min(index * interval, duration)),
+					timestampLabel(Math.min(timestamps[index] ?? index * interval, duration)),
 					frameWidth,
 					labelHeight
 				),

@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import OpenAI from 'openai';
 import { imageDataUrl } from '$lib/server/media.js';
 import { runAgentBash } from '$lib/server/agent-bash.js';
+import { updateJobStatus } from '$lib/server/job-status.js';
 
 function getSettings() {
 	const apiKey = process.env.OPENAI_API_KEY || process.env.LLM_API_KEY;
@@ -51,25 +52,33 @@ async function transcribeChunk(chunkPath, settings) {
 	return data;
 }
 
-export async function transcribeChunks(chunks) {
-	const settings = getSettings();
-	const segments = [];
-
-	for (const chunk of chunks) {
-		const result = await transcribeChunk(chunk.path, settings);
-		for (const segment of result.segments || []) {
-			const text = segment.text?.trim();
-			if (text) {
-				segments.push({
+async function transcribeBatch(chunks, settings) {
+	return Promise.all(
+		chunks.map(async (chunk) => {
+			const result = await transcribeChunk(chunk.path, settings);
+			return (result.segments || [])
+				.filter((segment) => segment.text?.trim())
+				.map((segment) => ({
 					start: chunk.offset + segment.start,
 					end: chunk.offset + segment.end,
-					text
-				});
-			}
-		}
+					text: segment.text.trim()
+				}));
+		})
+	);
+}
+
+export async function transcribeChunks(chunks) {
+	const settings = getSettings();
+	const concurrency = Math.max(1, Math.min(Number(process.env.TRANSCRIPTION_CONCURRENCY) || 2, 4));
+	const segments = [];
+
+	for (let index = 0; index < chunks.length; index += concurrency) {
+		segments.push(
+			...(await transcribeBatch(chunks.slice(index, index + concurrency), settings)).flat()
+		);
 	}
 
-	return segments;
+	return segments.sort((left, right) => left.start - right.start);
 }
 
 const selectionSchema = {
@@ -105,10 +114,14 @@ const bashTool = {
 	parameters: {
 		type: 'object',
 		additionalProperties: false,
-		required: ['script', 'purpose'],
+		required: ['script', 'intent'],
 		properties: {
 			script: { type: 'string', description: 'The complete Bash script to execute.' },
-			purpose: { type: 'string', description: 'A short explanation of what the script does.' }
+			intent: {
+				type: 'string',
+				description:
+					'A concise user-facing summary of what this tool call is trying to accomplish. Do not include hidden chain-of-thought.'
+			}
 		}
 	}
 };
@@ -152,7 +165,7 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 	const content = [
 		{
 			type: 'input_text',
-			text: `You are an autonomous vlog editor with a Bash tool. Create one coherent first cut close to ${targetMinutes} minutes.\nDesired vibe and selection criteria from the user: ${vibe}\n\nSelect footage solely on how well it serves the user's vibe, story, and target length. You do not need to use every source video.\n\nYou must use run_bash to inspect and edit the source files. Create the final movie at exactly ./vlogger-cut.mp4. Source videos are under ./sources. Timestamped transcripts are available as ./transcript-N.json, and contact sheets as ./contact-sheet-N.jpg. Never modify source files. You may create any intermediate files inside this job. Use FFmpeg/FFprobe to trim, normalize, and join the selected footage. The final MP4 should use broadly compatible H.264 video, AAC audio, yuv420p pixel format, and +faststart. Handle clips without audio by adding silence when needed.\n\nAfter the movie exists, return the title, summary, and the exact source clip boundaries used. Clip timestamps must stay within their source duration. The returned clips must match the rendered movie.`
+			text: `You are an autonomous vlog editor with a Bash tool. Create one coherent first cut close to ${targetMinutes} minutes.\nDesired vibe and selection criteria from the user: ${vibe}\n\nSelect footage solely on how well it serves the user's vibe, story, and target length. You do not need to use every source video.\n\nYou must use run_bash to inspect and edit the source files. Create the final movie at exactly ./vlogger-cut.mp4. Source videos are under ./sources. Timestamped transcripts are available as ./transcript-N.json, and contact sheets as ./contact-sheet-N.jpg. Never modify source files. You may create any intermediate files inside this job. Use FFmpeg/FFprobe to trim, normalize, and join the selected footage. The final MP4 should use broadly compatible H.264 video, AAC audio, yuv420p pixel format, and +faststart. Handle clips without audio by adding silence when needed.\n\nAfter the movie exists, return the title, summary, and the exact source clip boundaries used. Clip timestamps must stay within their source duration. The returned clips must match the rendered movie. Every run_bash call must include a concise intent that can be shown to the user as progress. Describe the action, not private chain-of-thought.`
 		}
 	];
 
@@ -168,6 +181,10 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 		});
 	}
 
+	await updateJobStatus(jobDirectory, {
+		phase: 'editing',
+		message: 'Reviewing transcripts and contact sheets'
+	});
 	const input = [{ type: 'message', role: 'user', content }];
 	for (let step = 0; step < 12; step += 1) {
 		const result = await createAgentResponse(settings, input);
@@ -178,11 +195,16 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 			for (const toolCall of toolCalls) {
 				if (toolCall.name !== 'run_bash') throw new Error('The editor requested an unknown tool');
 				const args = JSON.parse(toolCall.arguments);
+				await updateJobStatus(jobDirectory, {
+					phase: 'editing',
+					message: args.intent,
+					intent: true
+				});
 				const toolResult = await runAgentBash(args.script, jobDirectory);
 				input.push({
 					type: 'function_call_output',
 					call_id: toolCall.call_id,
-					output: JSON.stringify({ purpose: args.purpose, ...toolResult })
+					output: JSON.stringify({ intent: args.intent, ...toolResult })
 				});
 			}
 			continue;
@@ -203,6 +225,11 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 			});
 			continue;
 		}
+
+		await updateJobStatus(jobDirectory, {
+			phase: 'finalizing',
+			message: 'Checking the rendered movie and edit decisions'
+		});
 
 		const outputText =
 			result.output_text ||

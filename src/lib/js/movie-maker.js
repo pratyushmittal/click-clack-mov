@@ -8,7 +8,11 @@ async function importFile(importId, file) {
 	});
 }
 
-export async function createMovie({ files, vibe, targetMinutes, onImport }) {
+export function getMovieStatus(jobId) {
+	return apiFetch(`/api/jobs/${jobId}/status`);
+}
+
+export async function createMovie({ files, vibe, targetMinutes, onImport, onJob }) {
 	const importId = crypto.randomUUID();
 	const importedFiles = [];
 
@@ -19,5 +23,6 @@ export async function createMovie({ files, vibe, targetMinutes, onImport }) {
 	}
 
 	onImport?.(files.length, files.length, '');
+	onJob?.(importId);
 	return apiPost('/api/create-movie', { importId, files: importedFiles, vibe, targetMinutes });
 }

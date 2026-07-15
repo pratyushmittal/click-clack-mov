@@ -1,7 +1,7 @@
 <script>
 	import FileDropzone from '$lib/components/FileDropzone.svelte';
 	import MovieResult from '$lib/components/MovieResult.svelte';
-	import { createMovie } from '$lib/js/movie-maker.js';
+	import { createMovie, getMovieStatus } from '$lib/js/movie-maker.js';
 
 	let files = $state([]);
 	let vibe = $state('');
@@ -12,6 +12,9 @@
 	let result = $state(null);
 	let progressIndex = $state(0);
 	let importLabel = $state('');
+	let processingStatus = $state('');
+	let intentHistory = $state([]);
+	let activeJobId = $state('');
 	let progressTimer;
 
 	let combinedDuration = $derived(
@@ -83,6 +86,23 @@
 		if (!targetEdited) targetSeconds = suggestedTarget();
 	}
 
+	async function followJob(jobId) {
+		activeJobId = jobId;
+		processingStatus = 'Starting the editing pipeline';
+
+		while (activeJobId === jobId) {
+			try {
+				const data = await getMovieStatus(jobId);
+				processingStatus = data.status.message;
+				intentHistory = data.status.events || [];
+			} catch (err) {
+				// The job directory may not exist during the first status request.
+				if (err.status !== 404) console.error('Could not read movie status', err);
+			}
+			await new Promise((resolve) => setTimeout(resolve, 800));
+		}
+	}
+
 	async function submit() {
 		if (!files.length) return (error = 'Drop in at least one video first.');
 		if (files.some((item) => !Number.isFinite(item.duration))) {
@@ -92,6 +112,8 @@
 
 		processing = true;
 		error = '';
+		processingStatus = '';
+		intentHistory = [];
 		progressIndex = 0;
 		progressTimer = setInterval(() => {
 			progressIndex = Math.min(progressIndex + 1, progress.length - 1);
@@ -104,15 +126,18 @@
 				targetMinutes: targetSeconds / 60,
 				onImport: (index, total, fileName) => {
 					importLabel = index < total ? `Importing ${index + 1} of ${total}: ${fileName}` : '';
-				}
+				},
+				onJob: (jobId) => void followJob(jobId)
 			});
 			result = data.result;
 		} catch (err) {
 			error = err.message || 'Something went wrong while making your movie.';
 		} finally {
 			clearInterval(progressTimer);
+			activeJobId = '';
 			processing = false;
 			importLabel = '';
+			processingStatus = '';
 		}
 	}
 
@@ -123,6 +148,9 @@
 		targetEdited = false;
 		result = null;
 		error = '';
+		processingStatus = '';
+		intentHistory = [];
+		activeJobId = '';
 	}
 </script>
 
@@ -138,29 +166,9 @@
 	<div class="violet-glow"></div>
 	<div class="lime-glow"></div>
 	<div class="page-container">
-		<header class="site-header">
-			<a href="/" class="brand"
-				><span
-					><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
-						><path d="M8 5v14l11-7z" /></svg
-					></span
-				>Vlogger</a
-			>
-			<em>MVP · First cut</em>
-		</header>
-
 		{#if result}
 			<MovieResult {result} onReset={reset} />
 		{:else}
-			<section class="hero">
-				<p>Raw footage in. Story out.</p>
-				<h1>Find the film hiding in your <span>camera roll.</span></h1>
-				<div>
-					Drop your clips, describe what matters, and let Vlogger find and assemble your strongest
-					moments.
-				</div>
-			</section>
-
 			<div class="composer">
 				<FileDropzone {files} onAdd={addFiles} onRemove={removeFile} />
 				<div class="controls">
@@ -217,8 +225,19 @@
 
 			{#if processing}
 				<div class="progress" aria-live="polite">
-					<div><strong>{importLabel || progress[progressIndex]}</strong><span>Working</span></div>
+					<div>
+						<strong>{importLabel || processingStatus || progress[progressIndex]}</strong><span
+							>Working</span
+						>
+					</div>
 					<i><b></b></i>
+					{#if intentHistory.length}
+						<ul class="intent-list">
+							{#each intentHistory.slice(-3) as event}
+								<li>{event.message}</li>
+							{/each}
+						</ul>
+					{/if}
 					<p>
 						Long footage can take several minutes. Keep this tab open while your first cut is
 						rendered.
@@ -277,78 +296,7 @@
 		position: relative;
 		max-width: 64rem;
 		margin: 0 auto;
-	}
-	.site-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: clamp(2.5rem, 6vw, 4rem);
-	}
-	.brand {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		color: var(--ink-50);
-		font-family: 'Space Grotesk', sans-serif;
-		font-size: 1.1rem;
-		font-weight: 700;
-		text-decoration: none;
-	}
-	.brand span {
-		display: grid;
-		width: 2.25rem;
-		height: 2.25rem;
-		place-items: center;
-		border-radius: 0.75rem;
-		background: var(--lime-400);
-		color: var(--ink-950);
-	}
-	.brand svg {
-		width: 1rem;
-	}
-	.site-header em {
-		border: 1px solid var(--ink-800);
-		border-radius: 999px;
-		background: rgba(32, 32, 55, 0.7);
-		padding: 0.45rem 0.8rem;
-		color: var(--ink-300);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.62rem;
-		font-style: normal;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
-	}
-	.hero {
-		margin-bottom: clamp(2.25rem, 5vw, 3rem);
-		text-align: center;
-	}
-	.hero p {
-		margin: 0 0 1rem;
-		color: var(--lime-400);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.68rem;
-		letter-spacing: 0.25em;
-		text-transform: uppercase;
-	}
-	.hero h1 {
-		max-width: 48rem;
-		margin: 0 auto;
-		color: var(--ink-50);
-		font-family: 'Space Grotesk', sans-serif;
-		font-size: clamp(2.5rem, 7vw, 4rem);
-		font-weight: 600;
-		line-height: 1.04;
-		letter-spacing: -0.045em;
-	}
-	.hero h1 span {
-		color: var(--violet-300);
-	}
-	.hero div {
-		max-width: 38rem;
-		margin: 1.25rem auto 0;
-		color: var(--ink-300);
-		font-size: clamp(1rem, 2vw, 1.1rem);
-		line-height: 1.6;
+		padding-top: clamp(1rem, 6vw, 4rem);
 	}
 	.composer {
 		border: 1px solid var(--ink-800);
@@ -513,6 +461,30 @@
 		border-radius: inherit;
 		background: var(--lime-400);
 		animation: pulse 1.4s infinite alternate;
+	}
+	.intent-list {
+		display: grid;
+		gap: 0.4rem;
+		margin: 0.85rem 0 0;
+		padding: 0;
+		list-style: none;
+	}
+	.intent-list li {
+		position: relative;
+		padding-left: 1rem;
+		color: var(--ink-200);
+		font-size: 0.75rem;
+		line-height: 1.5;
+	}
+	.intent-list li::before {
+		position: absolute;
+		top: 0.45rem;
+		left: 0;
+		width: 0.4rem;
+		height: 0.4rem;
+		border-radius: 999px;
+		background: var(--lime-400);
+		content: '';
 	}
 	.progress p {
 		margin: 0.75rem 0 0;
