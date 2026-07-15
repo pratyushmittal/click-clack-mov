@@ -1,0 +1,55 @@
+:root {
+	font-family: 'DM Sans', sans-serif;
+	color: #f7f7ff;
+	background: #0b0b16;
+	font-synthesis: none;
+	--ink-50: #f7f7ff;
+	--ink-100: #eeeefe;
+	--ink-200: #dadaf7;
+	--ink-300: #bcbce8;
+	--ink-400: #9494cf;
+	--ink-500: #7070ae;
+	--ink-600: #57578e;
+	--ink-700: #454570;
+	--ink-800: #38385a;
+	--ink-900: #202037;
+	--ink-950: #0b0b16;
+	--lime-300: #c6ff52;
+	--lime-400: #b5ff22;
+	--lime-500: #9ee600;
+	--lime-900: #3d5c0b;
+	--lime-950: #1d3400;
+	--violet-300: #d3bcff;
+	--violet-400: #b98cff;
+	--violet-500: #9d5cff;
+	--violet-800: #611fb0;
+	--violet-950: #32105f;
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	min-width: 320px;
+	background: var(--ink-950);
+}
+body {
+	margin: 0;
+	min-height: 100vh;
+	background: var(--ink-950);
+}
+button,
+input,
+select {
+	font: inherit;
+}
+button {
+	cursor: pointer;
+}
+a {
+	color: inherit;
+}
+::selection {
+	color: var(--ink-950);
+	background: var(--lime-400);
+}

@@ -1,33 +1,65 @@
 # Vlogger
 
-A simple video trimmer, assembler, and movie maker that helps vloggers turn a collection of raw video files into a concise, coherent edit.
+Vlogger is a simple video trimmer, assembler, and AI movie maker that turns a collection of raw vlog files into a concise first cut.
 
-## Idea
+## MVP interface
 
-The user starts by dropping a collection of video files into the application. Vlogger analyzes every file and creates two artifacts:
+The main screen follows a deliberately small input flow:
 
-1. **Timestamped transcription** — transcribe the spoken content with GPT-4o Mini, retaining timestamps so every line can be mapped back to the relevant part of the source video.
-2. **Screen-cap roll** — sample frames throughout the video and combine them into a single time-lapsed thumbnail sheet that provides a quick visual overview of the footage.
+- **Footage** — a large drop area for up to 12 source videos.
+- **Vibe** — a text input describing the desired feeling and the kinds of moments to keep.
+- **Target length** — defaults to 25% of the combined source duration and can be adjusted with a slider.
 
-The timestamped transcript explains what was said, while the screen-cap roll shows what was happening. These artifacts are sent together to an LLM, which evaluates the complete collection, identifies the strongest moments, and recommends the best sections to include in the final video.
+## How it works
 
-## User interface
+1. The browser streams each selected source video to the local server process. The file is moved directly into its local job directory without a second copy or an application-level size limit.
+2. FFmpeg extracts compressed mono audio. Audio is kept whole unless it approaches the transcription API's file-size limit, then it is divided into the fewest safe chunks.
+3. Whisper generates segment-level timestamps that map spoken content precisely back to the source footage.
+4. FFmpeg samples each video at short intervals. Sharp combines those frames into one timestamped contact sheet per source video. Sampling starts at one frame per second for short clips, settles at ten-second intervals for typical footage, and adapts for very long videos to keep the sheet readable.
+5. GPT-5.6 Terra reviews every timestamped transcript and contact sheet together. It selects only the footage that serves the user's vibe and target length.
+6. Terra acts as an editing agent with a sandboxed Bash tool. It can inspect media with FFprobe and run FFmpeg commands to trim, normalize, and assemble the movie itself.
+7. The agent writes the finished first cut to `vlogger-cut.mp4` and returns the exact source boundaries it used.
 
-The main screen should keep the input process focused around three sections:
+The Bash tool runs inside the current job directory, cannot access the network, cannot read other files in the user's home directory, and receives no API credentials. Silent clips can be given a silent audio track when the agent combines them with spoken footage.
 
-- **Footage** — a large drop area for adding all source video files.
-- **Vibe** — a text input describing what the user wants the finished video to feel like and which kinds of moments should be kept.
-- **Target length** — a duration input defining the desired length of the finished video.
+## Requirements
 
-## Workflow
+- Node.js
+- FFmpeg and FFprobe available on `PATH`
+- An OpenAI or OpenRouter API key with access to Whisper and GPT-5.6 Terra
 
-1. Drop in a collection of raw video files.
-2. Transcribe each video with timestamps using GPT-4o Mini.
-3. Generate a time-lapsed screen-cap roll for each video.
-4. Give the transcripts and screen-cap rolls to an LLM for combined semantic and visual analysis.
-5. Select the best moments from the source footage.
-6. Trim and assemble the selected clips into a finished movie.
+## Setup
 
-## Goal
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
 
-Make editing a vlog as simple as providing the raw footage: the application should understand the content, find the best minutes, and create a strong first cut that the vlogger can review and refine.
+Open `http://localhost:5173`.
+
+Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-1` and `openai/gpt-5.6-terra` model names.
+
+## Commands
+
+- `npm run dev` — start the development server
+- `npm run check` — run Svelte diagnostics
+- `npm run lint` — check formatting and lint the code
+- `npm run format` — format the project
+- `npm run build` — create a production build
+
+## Local output
+
+When `DEBUG=true`, the server prints the absolute job directory as soon as processing starts:
+
+```text
+[MoviePipeline] Job directory /absolute/path/to/.vlogger/jobs/<job-id>
+```
+
+This development-only log makes it easy to inspect transcripts, contact sheets, agent intermediates, and the current render while the job is running.
+
+Generated source files, audio chunks, contact sheets, edit decisions, and movies are stored under `.vlogger/jobs/<job-id>/`. This directory is ignored by Git. The MVP does not yet remove old jobs automatically.
+
+## Current scope
+
+This is a local, single-user MVP. Processing happens in one request, so the browser tab must remain open while the movie is being analyzed and rendered. Production deployment will need background jobs, durable object storage, appropriate transfer limits, authentication, cleanup policies, and progress events.

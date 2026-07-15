@@ -1,7 +1,10 @@
 # Project Name
 
-SvelteKit (Svelte 5 runes) + Tailwind app. _One-paragraph description of what the
-app does, its main data flow, and the key external services it talks to._
+SvelteKit (Svelte 5 runes) app with native CSS that turns uploaded vlog footage into an
+AI-edited first cut. The server uses FFmpeg for audio extraction, contact sheets,
+trimming, normalization, and assembly; Whisper creates segment-level timestamped transcripts; and GPT-5.6 Terra reviews
+all transcripts and timestamped contact sheets, then uses a sandboxed Bash tool to
+run FFmpeg and produce the final movie.
 
 ## Commands
 
@@ -13,21 +16,22 @@ app does, its main data flow, and the key external services it talks to._
 
 ## Tech Stack
 
-SvelteKit 2 + Svelte 5 (runes), Tailwind 3.4, Vite 5, `@sveltejs/adapter-auto`, Zod validation.
-_List app-specific libraries here (AI SDKs, cloud clients, D3, etc.)._
+SvelteKit 2 + Svelte 5 (runes), native component-scoped CSS, Vite 5, `@sveltejs/adapter-auto`,
+Zod validation, OpenAI Node SDK, and system FFmpeg/FFprobe binaries.
 
 ## Env Variables (.env)
 
-_List required env vars here._ See `.env.example`. Prefer Application Default
-Credentials over API keys for Google Cloud — run `gcloud auth application-default login`.
+Set either `OPENAI_API_KEY` or `LLM_API_KEY`. OpenRouter keys are detected by their
+`sk-or-` prefix. Optional overrides: `LLM_BASE_URL`, `TRANSCRIPTION_MODEL`,
+`EDITOR_MODEL`, and `DEBUG`. See `.env.example`.
 
 ---
 
 ## Style rules
 
-- **No gray text.** No `text-gray-*` / `text-slate-*`. Use brand neutrals.
-- **No gray borders.** No `border-gray-*` / `border-slate-*`. Use brand-tinted borders.
-- **Palette** — define a full 50–950 scale per brand color in `tailwind.config.js`, base tone at `500`.
+- **Native CSS only.** Do not add Tailwind or another utility CSS framework.
+- **No generic gray colors.** Use the brand-neutral CSS variables defined in `src/app.css`.
+- **Palette** — define reusable colors as CSS custom properties in `src/app.css`.
 - **Fonts** — declare via `<link>` in `src/app.html`; set a default body font, a display/title font, and `font-mono` for code/JSON.
 
 ---
