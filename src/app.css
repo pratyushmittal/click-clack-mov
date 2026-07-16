@@ -1,55 +1,60 @@
 :root {
 	font-family: 'DM Sans', sans-serif;
-	color: #f7f7ff;
-	background: #0b0b16;
+	color: #241f25;
+	background: #efe4d7;
 	font-synthesis: none;
-	--ink-50: #f7f7ff;
-	--ink-100: #eeeefe;
-	--ink-200: #dadaf7;
-	--ink-300: #bcbce8;
-	--ink-400: #9494cf;
-	--ink-500: #7070ae;
-	--ink-600: #57578e;
-	--ink-700: #454570;
-	--ink-800: #38385a;
-	--ink-900: #202037;
-	--ink-950: #0b0b16;
-	--lime-300: #c6ff52;
-	--lime-400: #b5ff22;
-	--lime-500: #9ee600;
-	--lime-900: #3d5c0b;
-	--lime-950: #1d3400;
-	--violet-300: #d3bcff;
-	--violet-400: #b98cff;
-	--violet-500: #9d5cff;
-	--violet-800: #611fb0;
-	--violet-950: #32105f;
+	--paper: #fff9ef;
+	--paper-deep: #efe4d7;
+	--paper-shadow: #dfd0c1;
+	--ink: #241f25;
+	--ink-soft: #655a64;
+	--ink-faint: #91858e;
+	--line: #3c343b;
+	--lavender: #d9c5e5;
+	--lavender-deep: #b998ca;
+	--coral: #f5a085;
+	--coral-deep: #dd725b;
+	--mustard: #e0a334;
+	--mustard-light: #f3c66b;
+	--blue: #92b5c7;
+	--white: #fffdf8;
+	--font-display: 'Bree Serif', Georgia, serif;
+	--font-brand: 'Special Elite', Georgia, serif;
+	--font-mono: 'JetBrains Mono', monospace;
 }
 
 * {
 	box-sizing: border-box;
 }
+
 html {
 	min-width: 320px;
-	background: var(--ink-950);
+	background: var(--paper-deep);
 }
+
 body {
 	margin: 0;
 	min-height: 100vh;
-	background: var(--ink-950);
+	background:
+		radial-gradient(circle at 14% 8%, rgba(217, 197, 229, 0.75), transparent 28rem),
+		linear-gradient(135deg, rgba(255, 249, 239, 0.6), transparent 45%), var(--paper-deep);
 }
+
 button,
 input,
 select {
 	font: inherit;
 }
+
 button {
 	cursor: pointer;
 }
+
 a {
 	color: inherit;
 }
+
 ::selection {
-	color: var(--ink-950);
-	background: var(--lime-400);
+	color: var(--ink);
+	background: var(--mustard-light);
 }

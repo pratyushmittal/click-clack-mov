@@ -7,6 +7,13 @@ const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const videos = [path.join(fixtures, 'clip-a.mp4'), path.join(fixtures, 'clip-b.mp4')];
 const contactSheet = path.join(fixtures, 'contact-sheet.jpg');
 
+test('shows the Click Clack Mov identity', async ({ page }) => {
+	await page.goto('/');
+	await expect(page).toHaveTitle('Click Clack Mov — Little moments, cut together');
+	await expect(page.getByText('Click Clack', { exact: true })).toBeVisible();
+	await expect(page.getByAltText('Cow filming through a movie frame')).toBeVisible();
+});
+
 async function addVideos(page) {
 	await page.locator('input[type="file"]').setInputFiles(videos);
 	await expect(page.getByText('clip-a.mp4', { exact: true })).toBeVisible();

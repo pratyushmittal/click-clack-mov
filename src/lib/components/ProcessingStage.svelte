@@ -178,9 +178,9 @@
 <style>
 	.processing-stage {
 		overflow: hidden;
-		border: 1px solid var(--ink-700);
-		border-radius: 2rem;
-		background: var(--ink-950);
+		border: 2px solid var(--ink);
+		border-radius: 1.4rem 1.8rem 1.3rem 1.9rem;
+		background: var(--paper);
 	}
 	.media {
 		display: grid;
@@ -188,7 +188,8 @@
 		max-height: 36rem;
 		place-items: center;
 		overflow: hidden;
-		background: var(--ink-900);
+		border-bottom: 2px solid var(--ink);
+		background: var(--lavender);
 	}
 	.media video,
 	.media img {
@@ -197,26 +198,37 @@
 		min-height: 24rem;
 		max-height: 36rem;
 		object-fit: contain;
-		background: var(--ink-950);
+		background: var(--ink);
 	}
 	.media video {
 		object-fit: cover;
 	}
 	.copy {
-		padding: 1.5rem;
+		position: relative;
+		padding: 1.4rem 1.5rem 1.55rem;
 		text-align: center;
+	}
+	.copy::before {
+		position: absolute;
+		top: -0.45rem;
+		left: 50%;
+		width: 5rem;
+		height: 0.8rem;
+		content: '';
+		background: rgba(224, 163, 52, 0.65);
+		transform: translateX(-50%) rotate(-1deg);
 	}
 	h2 {
 		margin: 0;
-		color: var(--ink-50);
-		font-family: 'Space Grotesk', sans-serif;
-		font-size: clamp(1.35rem, 3vw, 1.8rem);
-		letter-spacing: -0.03em;
+		color: var(--ink);
+		font-family: var(--font-display);
+		font-size: clamp(1.35rem, 3vw, 1.85rem);
+		font-weight: 400;
 	}
 	p {
 		max-width: 44rem;
-		margin: 0.55rem auto 0;
-		color: var(--ink-300);
+		margin: 0.5rem auto 0;
+		color: var(--ink-soft);
 		font-size: 0.875rem;
 		line-height: 1.6;
 	}
@@ -225,22 +237,25 @@
 		gap: 0.5rem;
 	}
 	.waiting span {
-		width: 0.7rem;
-		height: 0.7rem;
+		width: 0.75rem;
+		height: 0.75rem;
+		border: 1px solid var(--ink);
 		border-radius: 999px;
-		background: var(--lime-400);
+		background: var(--coral);
 		animation: bounce 900ms infinite alternate;
 	}
 	.waiting span:nth-child(2) {
+		background: var(--mustard);
 		animation-delay: 180ms;
 	}
 	.waiting span:nth-child(3) {
+		background: var(--blue);
 		animation-delay: 360ms;
 	}
 	@keyframes bounce {
 		to {
 			transform: translateY(-0.5rem);
-			opacity: 0.45;
+			opacity: 0.55;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

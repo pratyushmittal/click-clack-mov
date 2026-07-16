@@ -51,7 +51,7 @@ async function transcribeChunk(chunkPath, settings) {
 			Authorization: `Bearer ${settings.apiKey}`,
 			'Content-Type': 'application/json',
 			'HTTP-Referer': 'http://localhost:5173',
-			'X-OpenRouter-Title': 'Vlogger'
+			'X-OpenRouter-Title': 'Click Clack Mov'
 		},
 		body: JSON.stringify({
 			model: settings.transcriptionModel,
@@ -223,7 +223,7 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 			Authorization: `Bearer ${settings.apiKey}`,
 			'Content-Type': 'application/json',
 			...(settings.openRouter
-				? { 'HTTP-Referer': 'http://localhost:5173', 'X-OpenRouter-Title': 'Vlogger' }
+				? { 'HTTP-Referer': 'http://localhost:5173', 'X-OpenRouter-Title': 'Click Clack Mov' }
 				: {})
 		},
 		body: JSON.stringify(request)

@@ -181,17 +181,26 @@
 </script>
 
 <svelte:head>
-	<title>Vlogger — Find the story in your footage</title>
+	<title>Click Clack Mov — Little moments, cut together</title>
 	<meta
 		name="description"
-		content="Drop your raw vlog footage, describe the vibe, and get an AI-edited first cut."
+		content="Drop your raw footage, describe the vibe, and let Click Clack Mov find the story."
 	/>
+	<meta property="og:title" content="Click Clack Mov" />
+	<meta property="og:description" content="Little moments, cut together." />
+	<meta property="og:image" content="/images/cow-camera-wide.webp" />
 </svelte:head>
 
 <main class="app-shell">
-	<div class="violet-glow"></div>
-	<div class="lime-glow"></div>
 	<div class="page-container">
+		<div class="brand-lockup">
+			<img src="/images/cow-film-frame.webp" alt="Cow filming through a movie frame" />
+			<div>
+				<p>Click Clack</p>
+				<strong>Mov</strong>
+			</div>
+			<span>Little moments,<br />cut together.</span>
+		</div>
 		{#if result}
 			<MovieResult {result} {processingSeconds} onReset={reset} />
 		{:else}
@@ -276,7 +285,7 @@
 			{/if}
 		{/if}
 
-		<footer>Transcribe <span>·</span> See <span>·</span> Select <span>·</span> Assemble</footer>
+		<footer><strong>clickclack.mov</strong><span>·</span> For the little stories we keep.</footer>
 	</div>
 </main>
 
@@ -285,45 +294,89 @@
 		position: relative;
 		min-height: 100vh;
 		overflow: hidden;
-		background: var(--ink-950);
-		padding: 1.5rem 1rem;
-		color: var(--ink-50);
+		padding: 1.25rem 1rem 2rem;
+		color: var(--ink);
 	}
-	.violet-glow,
-	.lime-glow {
+	.app-shell::before,
+	.app-shell::after {
 		position: absolute;
+		content: '';
 		pointer-events: none;
-		border-radius: 999px;
-		filter: blur(120px);
+		border: 3px solid var(--ink);
+		opacity: 0.08;
+		transform: rotate(-8deg);
 	}
-	.violet-glow {
-		top: -22rem;
-		left: 50%;
-		width: 58rem;
-		height: 34rem;
-		transform: translateX(-50%);
-		background: rgba(50, 16, 95, 0.55);
+	.app-shell::before {
+		top: 7rem;
+		left: -5rem;
+		width: 12rem;
+		height: 8rem;
+		border-radius: 48% 52% 44% 56%;
+		background: var(--ink);
 	}
-	.lime-glow {
-		right: -10rem;
-		bottom: -10rem;
-		width: 24rem;
-		height: 24rem;
-		background: rgba(29, 52, 0, 0.4);
+	.app-shell::after {
+		right: -4rem;
+		bottom: 4rem;
+		width: 10rem;
+		height: 6rem;
+		border-radius: 52% 48% 58% 42%;
+		background: var(--ink);
 	}
 	.page-container {
 		position: relative;
 		max-width: 64rem;
 		margin: 0 auto;
-		padding-top: clamp(1rem, 6vw, 4rem);
+	}
+	.brand-lockup {
+		display: flex;
+		height: 6.5rem;
+		align-items: center;
+		gap: 0.85rem;
+		margin: 0 0 1rem 0.6rem;
+	}
+	.brand-lockup img {
+		width: 4.6rem;
+		height: 4.6rem;
+		border-radius: 1rem;
+		object-fit: cover;
+		mix-blend-mode: multiply;
+	}
+	.brand-lockup div {
+		display: flex;
+		align-items: baseline;
+		gap: 0.42rem;
+		white-space: nowrap;
+	}
+	.brand-lockup p,
+	.brand-lockup strong {
+		margin: 0;
+		color: var(--ink);
+		font-family: var(--font-brand);
+		line-height: 0.9;
+		text-transform: uppercase;
+	}
+	.brand-lockup p {
+		font-size: clamp(1.25rem, 3vw, 2rem);
+	}
+	.brand-lockup strong {
+		color: var(--coral-deep);
+		font-size: clamp(1.65rem, 4vw, 2.7rem);
+	}
+	.brand-lockup > span {
+		margin-left: auto;
+		padding-right: 0.75rem;
+		color: var(--ink-soft);
+		font-family: var(--font-display);
+		font-size: 0.88rem;
+		line-height: 1.15;
+		text-align: right;
 	}
 	.composer {
-		border: 1px solid var(--ink-800);
-		border-radius: 2.5rem;
-		background: rgba(32, 32, 55, 0.4);
-		padding: clamp(0.75rem, 2vw, 1.25rem);
-		box-shadow: 0 0 80px rgba(181, 255, 34, 0.1);
-		backdrop-filter: blur(12px);
+		border: 3px solid var(--ink);
+		border-radius: 2rem 2.35rem 1.9rem 2.5rem;
+		background: rgba(255, 249, 239, 0.92);
+		padding: clamp(0.7rem, 2vw, 1.15rem);
+		box-shadow: 9px 11px 0 rgba(36, 31, 37, 0.12);
 	}
 	.controls {
 		display: grid;
@@ -334,31 +387,32 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		border: 1px solid var(--ink-700);
-		border-radius: 999px;
-		background: var(--ink-950);
-		padding: 0.5rem 0.5rem 0.5rem 1.25rem;
-		box-shadow: 0 24px 80px rgba(4, 4, 12, 0.35);
+		border: 2px solid var(--ink);
+		border-radius: 1rem 1.25rem 1rem 1.35rem;
+		background: var(--white);
+		padding: 0.45rem 0.45rem 0.45rem 1.15rem;
+		box-shadow: 4px 4px 0 var(--lavender);
 	}
 	.vibe-input:focus-within {
-		border-color: var(--violet-500);
-		box-shadow: 0 0 0 2px var(--violet-950);
+		box-shadow: 4px 4px 0 var(--coral);
 	}
 	.vibe-input label {
 		display: flex;
 		align-items: center;
 		gap: 0.45rem;
-		color: var(--violet-300);
-		font-family: 'JetBrains Mono', monospace;
+		color: var(--ink);
+		font-family: var(--font-mono);
 		font-size: 0.62rem;
-		letter-spacing: 0.12em;
+		font-weight: 700;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 	}
 	.vibe-input label i {
-		width: 0.5rem;
-		height: 0.5rem;
+		width: 0.55rem;
+		height: 0.55rem;
+		border: 1px solid var(--ink);
 		border-radius: 999px;
-		background: var(--violet-400);
+		background: var(--coral);
 	}
 	.vibe-input input {
 		min-width: 0;
@@ -367,31 +421,27 @@
 		outline: 0;
 		background: transparent;
 		padding: 0.75rem 0;
-		color: var(--ink-50);
+		color: var(--ink);
 	}
 	.vibe-input input::placeholder {
-		color: var(--ink-500);
+		color: var(--ink-faint);
 	}
 	.vibe-input button {
 		display: grid;
-		width: 2.75rem;
-		height: 2.75rem;
+		width: 2.85rem;
+		height: 2.85rem;
 		flex: 0 0 auto;
 		place-items: center;
-		border: 0;
-		border-radius: 999px;
-		background: var(--lime-400);
-		color: var(--ink-950);
-		transition: 160ms;
+		border: 2px solid var(--ink);
+		border-radius: 0.9rem 1.1rem 0.85rem 1.2rem;
+		background: var(--mustard);
+		color: var(--ink);
+		box-shadow: 3px 3px 0 var(--ink);
+		transition: 140ms;
 	}
 	.vibe-input button:hover {
-		transform: scale(1.05);
-		background: var(--lime-300);
-	}
-	.vibe-input button:disabled {
-		cursor: not-allowed;
-		background: var(--ink-700);
-		color: var(--ink-400);
+		transform: translate(2px, 2px);
+		box-shadow: 1px 1px 0 var(--ink);
 	}
 	.vibe-input svg {
 		width: 1.25rem;
@@ -401,7 +451,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
-		padding: 0 0.5rem;
+		padding: 0 0.35rem;
 	}
 	.presets {
 		display: flex;
@@ -409,66 +459,68 @@
 		gap: 0.45rem;
 	}
 	.presets button {
-		border: 1px solid var(--ink-700);
+		border: 1.5px solid var(--ink);
 		border-radius: 999px;
-		background: var(--ink-900);
-		padding: 0.45rem 0.7rem;
-		color: var(--ink-300);
+		background: var(--paper);
+		padding: 0.42rem 0.7rem;
+		color: var(--ink-soft);
 		font-size: 0.7rem;
-		transition: 160ms;
+		font-weight: 700;
+		transition: 140ms;
+	}
+	.presets button:nth-child(2n) {
+		transform: rotate(1deg);
 	}
 	.presets button:hover,
 	.presets button.active {
-		border-color: var(--violet-500);
-		background: var(--violet-950);
-		color: var(--violet-200);
+		background: var(--lavender);
+		color: var(--ink);
 	}
 	.target-input {
 		display: flex;
 		align-items: center;
 		gap: 0.35rem;
 		margin-left: auto;
-		border: 1px solid var(--ink-700);
-		border-radius: 999px;
-		background: var(--ink-950);
+		border: 1.5px solid var(--ink);
+		border-radius: 0.8rem;
+		background: var(--paper);
 		padding: 0.35rem 0.65rem;
-		color: var(--ink-400);
-		font-family: 'JetBrains Mono', monospace;
+		color: var(--ink-soft);
+		font-family: var(--font-mono);
 		font-size: 0.65rem;
 		text-transform: uppercase;
 	}
 	.target-input:focus-within {
-		border-color: var(--lime-400);
+		background: var(--mustard-light);
 	}
 	.target-input input {
 		width: 3.5rem;
 		border: 0;
 		outline: 0;
 		background: transparent;
-		color: var(--lime-400);
+		color: var(--ink);
 		font-family: inherit;
 		font-size: 0.75rem;
+		font-weight: 700;
 		text-align: right;
 	}
-	.target-input input::placeholder {
-		color: var(--ink-600);
+	.target-input input::placeholder,
+	.target-input small {
+		color: var(--ink-faint);
 	}
 	.target-input small {
-		color: var(--ink-500);
 		font-size: inherit;
-	}
-	.error {
-		margin-top: 1.25rem;
-		border-radius: 1rem;
-		padding: 1.25rem;
 	}
 	.error {
 		display: flex;
 		align-items: flex-start;
 		gap: 0.75rem;
-		border: 1px solid var(--violet-800);
-		background: rgba(50, 16, 95, 0.6);
-		color: var(--violet-300);
+		margin-top: 1.25rem;
+		border: 2px solid var(--ink);
+		border-radius: 1rem;
+		background: var(--coral);
+		padding: 1rem 1.25rem;
+		color: var(--ink);
 		font-size: 0.875rem;
 	}
 	.error svg {
@@ -479,24 +531,28 @@
 		display: flex;
 		justify-content: center;
 		gap: 0.55rem;
-		margin-top: 3rem;
-		color: var(--ink-600);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.62rem;
-		letter-spacing: 0.15em;
-		text-transform: uppercase;
+		margin-top: 2.4rem;
+		color: var(--ink-soft);
+		font-size: 0.72rem;
 	}
-	@media (min-width: 640px) {
-		.app-shell {
-			padding-inline: 1.5rem;
-		}
-	}
-	@media (min-width: 768px) {
-		.app-shell {
-			padding-block: 2.5rem;
-		}
+	footer strong {
+		color: var(--ink);
+		font-family: var(--font-mono);
+		font-size: 0.65rem;
+		letter-spacing: 0.08em;
 	}
 	@media (max-width: 680px) {
+		.brand-lockup {
+			height: 5.5rem;
+			margin-left: 0;
+		}
+		.brand-lockup img {
+			width: 4rem;
+			height: 4rem;
+		}
+		.brand-lockup > span {
+			display: none;
+		}
 		.vibe-input label {
 			display: none;
 		}

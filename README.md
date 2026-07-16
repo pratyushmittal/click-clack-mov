@@ -1,10 +1,12 @@
-# Vlogger
+# Click Clack Mov
 
-Vlogger is a macOS-only video trimmer, assembler, and AI movie maker that turns a collection of raw vlog files into a concise first cut.
+Click Clack Mov is a macOS-only video trimmer, assembler, and AI movie maker that turns a collection of raw vlog files into a concise first cut.
+
+The name is inspired by the joy of reading _Click, Clack, Moo_ with my daughter. This project is dedicated to her and to the little family stories worth keeping. The visual identity uses original cow-and-camera artwork, warm paper textures, lavender, coral, mustard, and loose hand-drawn forms.
 
 ## Platform
 
-Vlogger deliberately targets macOS only. The application may rely on macOS-specific tools and media APIs such as `sandbox-exec`, VideoToolbox, AudioToolbox, AVFoundation, Core Media, Core Image, and Metal when they make processing faster or improve the result. We do not need to maintain Linux or Windows compatibility.
+Click Clack Mov deliberately targets macOS only. The application may rely on macOS-specific tools and media APIs such as `sandbox-exec`, VideoToolbox, AudioToolbox, AVFoundation, Core Media, Core Image, and Metal when they make processing faster or improve the result. We do not need to maintain Linux or Windows compatibility.
 
 For video processing, prefer hardware-accelerated decoding and encoding when it is supported and measurements show a meaningful speed benefit. Keep a macOS software path for unsupported formats and quality-sensitive operations where hardware encoding is not the best trade-off.
 
@@ -61,7 +63,7 @@ Verify the caption filters:
 ffmpeg -hide_banner -filters 2>/dev/null | grep -E 'drawtext|subtitles| ass '
 ```
 
-Then install and run Vlogger:
+Then install and run Click Clack Mov:
 
 ```bash
 npm install

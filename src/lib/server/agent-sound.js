@@ -17,7 +17,7 @@ const maxDownloads = 3;
 const maxFileBytes = 20 * 1024 * 1024;
 const requestHeaders = {
 	Accept: 'application/json',
-	'User-Agent': 'Vlogger/0.1 (local macOS video editor)'
+	'User-Agent': 'ClickClackMov/0.1 (local macOS video editor)'
 };
 
 function safeName(value) {

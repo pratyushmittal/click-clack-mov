@@ -14,7 +14,7 @@ export async function GET({ params }) {
 			headers: {
 				'Content-Type': 'video/mp4',
 				'Content-Length': String(info.size),
-				'Content-Disposition': 'attachment; filename="vlogger-cut.mp4"'
+				'Content-Disposition': 'attachment; filename="click-clack-mov.mp4"'
 			}
 		});
 	} catch {

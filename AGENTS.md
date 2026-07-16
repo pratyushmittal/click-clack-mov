@@ -1,4 +1,4 @@
-# Project Name
+# Click Clack Mov
 
 SvelteKit (Svelte 5 runes) app with native CSS that turns uploaded vlog footage into an
 AI-edited first cut. The server uses FFmpeg for audio extraction, contact sheets,
@@ -35,6 +35,13 @@ Set either `OPENAI_API_KEY` or `LLM_API_KEY`. OpenRouter keys are detected by th
 `EDITOR_MODEL`, `EDITOR_MAX_TURNS`, and `DEBUG`. See `.env.example`.
 
 ---
+
+## Brand
+
+- **Name:** Click Clack Mov
+- **Domain:** clickclack.mov
+- The name is inspired by reading _Click, Clack, Moo_ with the creator's daughter; the project is dedicated to her.
+- Use original cow-and-camera artwork, warm paper texture, lavender, coral, mustard, blue, black ink, and playful hand-drawn geometry. Do not copy the book artwork directly.
 
 ## Style rules
 

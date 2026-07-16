@@ -54,17 +54,18 @@
 <style>
 	.result-card {
 		overflow: hidden;
-		border: 1px solid var(--ink-800);
-		border-radius: 2rem;
-		background: var(--ink-900);
-		box-shadow: 0 24px 80px rgba(4, 4, 12, 0.45);
+		border: 3px solid var(--ink);
+		border-radius: 1.7rem 2.1rem 1.6rem 2.2rem;
+		background: var(--paper);
+		box-shadow: 9px 11px 0 rgba(36, 31, 37, 0.12);
 	}
 	header,
 	.decisions {
 		padding: clamp(1.5rem, 4vw, 2rem);
 	}
 	header {
-		border-bottom: 1px solid var(--ink-800);
+		border-bottom: 2px solid var(--ink);
+		background: linear-gradient(150deg, var(--lavender), #eadff0);
 	}
 	.result-heading {
 		display: flex;
@@ -74,74 +75,79 @@
 	}
 	.result-heading p {
 		margin: 0 0 0.5rem;
-		color: var(--lime-400);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.68rem;
-		letter-spacing: 0.2em;
+		color: var(--ink);
+		font-family: var(--font-mono);
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 	}
 	h2 {
 		margin: 0;
-		color: var(--ink-50);
-		font-family: 'Space Grotesk', sans-serif;
-		font-size: clamp(1.8rem, 4vw, 2.4rem);
-		letter-spacing: -0.04em;
+		color: var(--ink);
+		font-family: var(--font-display);
+		font-size: clamp(1.8rem, 4vw, 2.5rem);
+		font-weight: 400;
 	}
 	.result-heading > span {
+		border: 1.5px solid var(--ink);
 		border-radius: 999px;
-		background: var(--lime-400);
+		background: var(--mustard);
 		padding: 0.45rem 0.75rem;
-		color: var(--ink-950);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.75rem;
+		color: var(--ink);
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
 		font-weight: 700;
 	}
 	.summary {
 		max-width: 42rem;
-		margin: 1.5rem 0 0;
-		color: var(--ink-300);
+		margin: 1.35rem 0 0;
+		color: var(--ink-soft);
 		line-height: 1.7;
 	}
 	.actions {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.75rem;
-		margin-top: 1.75rem;
+		margin-top: 1.6rem;
 	}
 	.actions a,
 	.actions button {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		border-radius: 999px;
-		padding: 0.8rem 1.25rem;
+		border: 2px solid var(--ink);
+		border-radius: 0.85rem 1rem 0.8rem 1.1rem;
+		padding: 0.75rem 1.15rem;
 		font-size: 0.875rem;
 		font-weight: 700;
 		text-decoration: none;
 	}
 	.actions a {
-		background: var(--lime-400);
-		color: var(--ink-950);
+		background: var(--coral);
+		box-shadow: 3px 3px 0 var(--ink);
+		color: var(--ink);
 	}
 	.actions a:hover {
-		background: var(--lime-300);
+		transform: translate(2px, 2px);
+		box-shadow: 1px 1px 0 var(--ink);
 	}
 	.actions svg {
 		width: 1rem;
 	}
 	.actions button {
-		border: 1px solid var(--ink-700);
-		background: transparent;
-		color: var(--ink-200);
+		background: var(--paper);
+		color: var(--ink);
 	}
 	.actions button:hover {
-		border-color: var(--ink-500);
-		background: var(--ink-800);
+		background: var(--mustard-light);
 	}
 	h3 {
 		margin: 0 0 1rem;
-		color: var(--ink-100);
-		font-family: 'Space Grotesk', sans-serif;
+		color: var(--ink);
+		font-family: var(--font-display);
+		font-size: 1.35rem;
+		font-weight: 400;
 	}
 	.decision-list {
 		display: grid;
@@ -152,9 +158,9 @@
 		grid-template-columns: 2rem 1fr auto;
 		align-items: center;
 		gap: 0.75rem;
-		border: 1px solid var(--ink-800);
-		border-radius: 1rem;
-		background: rgba(11, 11, 22, 0.6);
+		border: 1.5px solid var(--ink);
+		border-radius: 0.85rem 1rem 0.8rem 1.05rem;
+		background: var(--white);
 		padding: 1rem;
 	}
 	.number {
@@ -162,31 +168,39 @@
 		width: 2rem;
 		height: 2rem;
 		place-items: center;
+		border: 1.5px solid var(--ink);
 		border-radius: 999px;
-		background: var(--violet-950);
-		color: var(--violet-300);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.75rem;
+		background: var(--blue);
+		color: var(--ink);
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
 	}
 	.decision div {
 		min-width: 0;
 	}
 	.decision strong {
-		color: var(--ink-100);
+		color: var(--ink);
 		font-size: 0.875rem;
 	}
 	.decision p {
 		margin: 0.25rem 0 0;
-		color: var(--ink-400);
+		color: var(--ink-soft);
 		font-size: 0.75rem;
 		line-height: 1.5;
 	}
 	time {
-		color: var(--lime-400);
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.75rem;
+		color: var(--coral-deep);
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		font-weight: 700;
 	}
 	@media (max-width: 600px) {
+		.result-heading {
+			display: grid;
+		}
+		.result-heading > span {
+			justify-self: start;
+		}
 		.decision {
 			grid-template-columns: 2rem 1fr;
 		}
