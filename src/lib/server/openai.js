@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import OpenAI from 'openai';
 import { runAgentBash } from '$lib/server/agent-bash.js';
 import { appendAgentHistory } from '$lib/server/agent-history.js';
-import { loadAgentImage } from '$lib/server/agent-image.js';
+import { loadAgentImages } from '$lib/server/agent-image.js';
 import { downloadAgentSound } from '$lib/server/agent-sound.js';
 import movieEditorPrompt from '$lib/server/prompts/movie-editor.md?raw';
 import { updateJobStatus } from '$lib/server/job-status.js';
@@ -14,11 +14,12 @@ import { transcriptionOptions } from '$lib/server/transcription-options.js';
 function getMaxAgentTurns() {
 	const configuredTurns = Number.parseInt(process.env.EDITOR_MAX_TURNS || '', 10);
 	// A ceiling prevents a broken tool loop from running indefinitely.
-	return Number.isInteger(configuredTurns) ? Math.max(4, Math.min(configuredTurns, 64)) : 50;
+	return Number.isInteger(configuredTurns) ? Math.max(4, Math.min(configuredTurns, 128)) : 80;
 }
 
 function getSettings() {
-	const apiKey = process.env.OPENAI_API_KEY || process.env.LLM_API_KEY;
+	// The app-specific key should override a global OpenAI shell key.
+	const apiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY;
 	if (!apiKey) throw new Error('Set OPENAI_API_KEY or LLM_API_KEY in .env');
 
 	const openRouter = apiKey.startsWith('sk-or-');
@@ -127,19 +128,25 @@ const selectionSchema = {
 
 const imageTool = {
 	type: 'function',
-	name: 'load_image',
+	name: 'load_images',
 	description:
-		'Load a JPEG, PNG, or WebP image from the current editing job as visual input. Use this only for a closer frame or image created during editing; the initial contact sheets are already visible.',
+		'Load one to six JPEG, PNG, or WebP files from the current editing job as visual input. Use it to review contact sheets, music timelines, or frames generated during editing.',
 	strict: true,
 	parameters: {
 		type: 'object',
 		additionalProperties: false,
-		required: ['path', 'intent'],
+		required: ['paths', 'intent'],
 		properties: {
-			path: { type: 'string', description: 'A path relative to the current job directory.' },
+			paths: {
+				type: 'array',
+				minItems: 1,
+				maxItems: 6,
+				items: { type: 'string' },
+				description: 'Paths relative to the current job directory.'
+			},
 			intent: {
 				type: 'string',
-				description: 'A concise user-facing summary of why this image is being inspected.'
+				description: 'A concise user-facing summary of why these images are being inspected.'
 			}
 		}
 	}
@@ -304,15 +311,15 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 							call_id: toolCall.call_id,
 							output: JSON.stringify({ intent: args.intent, ...toolResult })
 						};
-					} else if (toolCall.name === 'load_image') {
-						toolResult = await loadAgentImage(args.path, jobDirectory);
+					} else if (toolCall.name === 'load_images') {
+						toolResult = await loadAgentImages(args.paths, jobDirectory);
 						output = {
 							type: 'function_call_output',
 							call_id: toolCall.call_id,
-							output: [
-								{ type: 'input_text', text: `Loaded ${toolResult.path}.` },
-								{ type: 'input_image', image_url: toolResult.imageUrl, detail: 'high' }
-							]
+							output: toolResult.flatMap((image) => [
+								{ type: 'input_text', text: `Loaded ${image.path}.` },
+								{ type: 'input_image', image_url: image.imageUrl, detail: 'high' }
+							])
 						};
 					} else if (toolCall.name === 'download_sound') {
 						try {

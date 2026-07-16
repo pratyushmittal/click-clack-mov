@@ -35,3 +35,12 @@ export async function loadAgentImage(imagePath, jobDirectory) {
 		imageUrl: `data:${mediaType};base64,${(await readFile(filePath)).toString('base64')}`
 	};
 }
+
+export async function loadAgentImages(imagePaths, jobDirectory) {
+	// A small batch limits image context while avoiding one model turn per contact sheet.
+	if (!Array.isArray(imagePaths) || imagePaths.length < 1 || imagePaths.length > 6) {
+		throw new Error('Load between one and six images at a time');
+	}
+
+	return Promise.all(imagePaths.map((imagePath) => loadAgentImage(imagePath, jobDirectory)));
+}

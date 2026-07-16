@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { loadAgentImage } from '../../src/lib/server/agent-image.js';
+import { loadAgentImage, loadAgentImages } from '../../src/lib/server/agent-image.js';
 
 const tinyPng = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -29,5 +29,21 @@ test('does not follow image paths outside the editing job', async () => {
 
 	await expect(loadAgentImage('./escaped.png', jobDirectory)).rejects.toThrow(
 		'Image path must stay inside the job directory'
+	);
+});
+
+test('loads a small batch of images', async () => {
+	const jobDirectory = await mkdtemp(path.join(tmpdir(), 'vlogger-images-'));
+	await writeFile(path.join(jobDirectory, 'first.png'), tinyPng);
+	await writeFile(path.join(jobDirectory, 'second.png'), tinyPng);
+
+	const result = await loadAgentImages(['./first.png', './second.png'], jobDirectory);
+
+	expect(result.map((image) => image.path)).toEqual(['./first.png', './second.png']);
+});
+
+test('limits image batches to six files', async () => {
+	await expect(loadAgentImages(Array(7).fill('./frame.png'), '/tmp')).rejects.toThrow(
+		'Load between one and six images at a time'
 	);
 });

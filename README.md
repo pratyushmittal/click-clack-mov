@@ -20,7 +20,7 @@ The main screen follows a deliberately small input flow:
 
 ## Background music
 
-The editing agent receives the curated tracks under `./music`, plus precomputed aubio beat/onset timestamps, BPM and FFmpeg loudness measurements under `./music-analysis`. A full-library waveform overview is sent as image input, and detailed timestamped timelines can be opened with `load_image`. Run `npm run analyze:music` after changing `sounds/library.json` or replacing a curated track.
+The editing agent receives the curated tracks under `./music`, plus precomputed aubio beat/onset timestamps, BPM and FFmpeg loudness measurements under `./music-analysis`. The agent reads the compact catalog first and can open the full-library waveform overview or detailed timestamped timelines with `load_images`. Run `npm run analyze:music` after changing `sounds/library.json` or replacing a curated track.
 
 When a specific sound effect materially improves an edit, the agent can use `download_sound` to search Openverse and place one CC0 result under `./downloaded-audio`. Downloads are restricted to approved audio hosts, 20 MB, 30 seconds, and three unique effects per movie. Files are validated with FFprobe, cached under `.vlogger/cache/audio/`, and recorded in `audio-credits.json` and `audio-credits.txt`. The tool does not download background music, and Openverse licence metadata is retained as provenance rather than treated as a legal guarantee.
 
@@ -30,7 +30,7 @@ When a specific sound effect materially improves an edit, the agent can use `dow
 2. FFmpeg extracts compressed mono audio. Audio is kept whole unless it approaches the transcription API's file-size limit, then it is divided into the fewest safe chunks.
 3. Whisper generates timestamped segments that map spoken content precisely back to the source footage. OpenRouter uses the faster, lower-cost Whisper Large V3 Turbo model.
 4. FFmpeg skips non-keyframes and samples representative keyframes at short intervals, avoiding a full decode of every frame. Sharp combines those frames into one timestamped contact sheet per source video. Sampling starts at one frame per second for short clips, settles at ten-second intervals for typical footage, and adapts for very long videos to keep the sheet readable.
-5. GPT-5.6 Sol reviews every timestamped transcript and contact sheet together. It selects only the footage that serves the user's vibe and target length.
+5. GPT-5.6 Sol receives a compact file index, reads timestamped transcripts through Bash, and reviews contact sheets in batches with `load_images`. It selects only the footage that serves the user's vibe and target length.
 6. Sol acts as an editing agent with a sandboxed Bash tool. It can inspect media with FFprobe and run FFmpeg commands to trim, normalize, and assemble the movie itself.
 7. Every Bash tool call includes a concise user-facing intent. The server records these intents in `status.json`, and the interface polls the local status endpoint to show live editing feedback without exposing private chain-of-thought.
 8. When needed, the agent can download up to three short CC0 sound effects through the restricted Openverse tool; the sandboxed Bash tool itself remains offline.
@@ -73,7 +73,7 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-large-v3-turbo` and `openai/gpt-5.6-sol` model names. Openverse works anonymously; an optional `OPENVERSE_API_TOKEN` can use registered API limits.
+Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`; `LLM_API_KEY` takes precedence when both exist. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-large-v3-turbo` and `openai/gpt-5.6-sol` model names. Openverse works anonymously; an optional `OPENVERSE_API_TOKEN` can use registered API limits.
 
 ## Tests
 
@@ -101,12 +101,12 @@ The concurrency can be adjusted in `.env`:
 ```env
 VIDEO_CONCURRENCY=2
 TRANSCRIPTION_CONCURRENCY=2
-EDITOR_MAX_TURNS=50
+EDITOR_MAX_TURNS=80
 ```
 
 Values from 1–4 are accepted. Higher values can improve throughput on a powerful machine, but may increase disk contention, CPU usage, memory usage, and API rate-limit errors.
 
-`EDITOR_MAX_TURNS` limits complete model/tool round trips, not only successful Bash calls. It defaults to 50 and accepts values from 4–64. Keep a finite limit to stop broken retry loops; raise it for unusually complex edits such as burned captions, subtitles, or several render-validation passes. More turns can increase runtime and model cost.
+`EDITOR_MAX_TURNS` limits complete model/tool round trips, not only successful Bash calls. It defaults to 80 and accepts values from 4–128. Keep a finite limit to stop broken retry loops; raise it for unusually complex edits such as burned captions, subtitles, or several render-validation passes. More turns can increase runtime and model cost.
 
 To temporarily skip audio extraction and transcription, use:
 
@@ -114,7 +114,7 @@ To temporarily skip audio extraction and transcription, use:
 DISABLE_TRANSCRIPTION=true
 ```
 
-The editor will still receive every contact sheet and will treat each source as visual-only footage. Remove the setting or change it to `false` to restore transcription.
+The editor can still review every contact sheet with `load_images` and will treat each source as visual-only footage. Remove the setting or change it to `false` to restore transcription.
 
 ## Commands
 
