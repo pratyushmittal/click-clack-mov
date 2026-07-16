@@ -60,24 +60,6 @@
 			"onsetCount": 511
 		},
 		{
-			"id": "atmospheric-world-sun-and-his-daughter",
-			"fileName": "atmospheric-world-sun-and-his-daughter.mp3",
-			"title": "Sun and His Daughter",
-			"artist": "Eugenio Mininni",
-			"vibes": ["atmospheric", "reflective", "world", "cinematic"],
-			"duration": 167.769,
-			"bpm": 100.34,
-			"integratedLufs": -10.9,
-			"loudnessRangeLu": 2.8,
-			"truePeakDbfs": -0.2,
-			"firstBeat": 1.786,
-			"musicPath": "./music/atmospheric-world-sun-and-his-daughter.mp3",
-			"analysisPath": "./music-analysis/atmospheric-world-sun-and-his-daughter.json",
-			"timelinePath": "./music-analysis/atmospheric-world-sun-and-his-daughter.timeline.png",
-			"beatCount": 277,
-			"onsetCount": 435
-		},
-		{
 			"id": "jazz-reflective-beautiful-dream",
 			"fileName": "jazz-reflective-beautiful-dream.mp3",
 			"title": "Beautiful Dream",

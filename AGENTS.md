@@ -32,7 +32,7 @@ Zod validation, OpenAI Node SDK, and macOS FFmpeg/FFprobe binaries with access t
 
 Set either `OPENAI_API_KEY` or `LLM_API_KEY`. OpenRouter keys are detected by their
 `sk-or-` prefix. Optional overrides: `LLM_BASE_URL`, `TRANSCRIPTION_MODEL`,
-`EDITOR_MODEL`, and `DEBUG`. See `.env.example`.
+`EDITOR_MODEL`, `EDITOR_MAX_TURNS`, and `DEBUG`. See `.env.example`.
 
 ---
 
@@ -109,6 +109,7 @@ export async function POST({ request }) {
 - **logger.js:** `createLogger` → `logger.debug/info/warn/error` (`debug` gated by `DEBUG=true`)
 - **transcription-cache.js:** content-addressed transcript cache under `.vlogger/cache/transcriptions/`; keyed by source SHA-256, model, and cache version; deduplicates concurrent identical files.
 - **music-library.js:** APFS-clones the curated `sounds/` tracks and precomputed `sounds-analysis/` beat maps into each editing job. Regenerate analysis with `npm run analyze:music`.
+- **movie-editor-context.js:** builds the dynamic developer context containing durations, transcripts, music metadata, and images; the user message remains exactly the submitted vibe.
 - _Add domain-specific server helpers here (AI clients, storage, scrapers). Keep all credential handling and third-party SDK calls server-only._
 
 ### Standards

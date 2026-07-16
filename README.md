@@ -18,7 +18,7 @@ The main screen follows a deliberately small input flow:
 
 ## Background music
 
-The editing agent receives seven curated tracks under `./music`, plus precomputed aubio beat/onset timestamps, BPM and FFmpeg loudness measurements under `./music-analysis`. A full-library waveform overview is sent as image input, and detailed timestamped timelines can be opened with `load_image`. Run `npm run analyze:music` after changing `sounds/library.json` or replacing a curated track.
+The editing agent receives the curated tracks under `./music`, plus precomputed aubio beat/onset timestamps, BPM and FFmpeg loudness measurements under `./music-analysis`. A full-library waveform overview is sent as image input, and detailed timestamped timelines can be opened with `load_image`. Run `npm run analyze:music` after changing `sounds/library.json` or replacing a curated track.
 
 ## How it works
 
@@ -37,11 +37,28 @@ The Bash tool runs inside the current job directory, cannot access the network, 
 
 - macOS
 - Node.js
-- FFmpeg and FFprobe available on `PATH`, preferably with VideoToolbox and AudioToolbox enabled
+- Homebrew `ffmpeg-full` and FFprobe available on `PATH`; this includes the text and subtitle renderers omitted by the smaller `ffmpeg` formula
 - aubio available on `PATH` when adding or replacing curated music tracks
 - An OpenAI or OpenRouter API key with access to Whisper and GPT-5.6 Terra
 
 ## Setup
+
+Install the complete FFmpeg build once. It is keg-only, so place it before the smaller `ffmpeg` formula on `PATH`:
+
+```bash
+brew install ffmpeg-full
+echo 'export PATH="$(brew --prefix ffmpeg-full)/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+hash -r
+```
+
+Verify the caption filters:
+
+```bash
+ffmpeg -hide_banner -filters 2>/dev/null | grep -E 'drawtext|subtitles| ass '
+```
+
+Then install and run Vlogger:
 
 ```bash
 npm install
@@ -79,9 +96,12 @@ The concurrency can be adjusted in `.env`:
 ```env
 VIDEO_CONCURRENCY=2
 TRANSCRIPTION_CONCURRENCY=2
+EDITOR_MAX_TURNS=50
 ```
 
 Values from 1–4 are accepted. Higher values can improve throughput on a powerful machine, but may increase disk contention, CPU usage, memory usage, and API rate-limit errors.
+
+`EDITOR_MAX_TURNS` limits complete model/tool round trips, not only successful Bash calls. It defaults to 50 and accepts values from 4–64. Keep a finite limit to stop broken retry loops; raise it for unusually complex edits such as burned captions, subtitles, or several render-validation passes. More turns can increase runtime and model cost.
 
 To temporarily skip audio extraction and transcription, use:
 

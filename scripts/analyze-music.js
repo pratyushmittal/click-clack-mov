@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { format } from 'prettier';
 import sharp from 'sharp';
 
 const exec = promisify(execFile);
@@ -21,6 +22,15 @@ function escapeXml(value) {
 function timestamp(seconds) {
 	const minutes = Math.floor(seconds / 60);
 	return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
+async function writeJson(filePath, value) {
+	const json = await format(JSON.stringify(value), {
+		parser: 'json',
+		useTabs: true,
+		printWidth: 100
+	});
+	await writeFile(filePath, json);
 }
 
 async function command(commandName, args) {
@@ -153,6 +163,21 @@ async function createTimeline(track, filePath, outputPath) {
 	await rm(waveformPath);
 }
 
+async function removeStaleAnalysis(tracks) {
+	const expectedFiles = new Set([
+		'catalog.json',
+		'overview.png',
+		...tracks.flatMap((track) => [`${track.id}.json`, `${track.id}.timeline.png`])
+	]);
+
+	// A removed library track should not leave files that the agent could inspect later.
+	await Promise.all(
+		(await readdir(analysisDirectory))
+			.filter((fileName) => !expectedFiles.has(fileName))
+			.map((fileName) => rm(path.join(analysisDirectory, fileName), { recursive: true }))
+	);
+}
+
 async function createOverview(tracks) {
 	const rowWidth = 1400;
 	const rowHeight = 263;
@@ -195,10 +220,7 @@ async function analyzeTrack(track) {
 		analysisPath: `./music-analysis/${track.id}.json`,
 		timelinePath: `./music-analysis/${track.id}.timeline.png`
 	};
-	await writeFile(
-		path.join(analysisDirectory, `${track.id}.json`),
-		JSON.stringify(result, null, 2)
-	);
+	await writeJson(path.join(analysisDirectory, `${track.id}.json`), result);
 	await createTimeline(result, filePath, path.join(analysisDirectory, `${track.id}.timeline.png`));
 	return result;
 }
@@ -211,19 +233,13 @@ for (const track of library.tracks) {
 	tracks.push(await analyzeTrack(track));
 }
 await createOverview(tracks);
-await writeFile(
-	path.join(analysisDirectory, 'catalog.json'),
-	JSON.stringify(
-		{
-			license: library.license,
-			tracks: tracks.map(({ beats, onsets, source: _source, ...track }) => ({
-				...track,
-				beatCount: beats.length,
-				onsetCount: onsets.length
-			}))
-		},
-		null,
-		2
-	)
-);
+await writeJson(path.join(analysisDirectory, 'catalog.json'), {
+	license: library.license,
+	tracks: tracks.map(({ beats, onsets, source: _source, ...track }) => ({
+		...track,
+		beatCount: beats.length,
+		onsetCount: onsets.length
+	}))
+});
+await removeStaleAnalysis(tracks);
 console.log(`Analyzed ${tracks.length} tracks into ${analysisDirectory}`);

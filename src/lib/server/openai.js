@@ -1,13 +1,19 @@
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import OpenAI from 'openai';
-import { imageDataUrl } from '$lib/server/media.js';
 import { runAgentBash } from '$lib/server/agent-bash.js';
 import { appendAgentHistory } from '$lib/server/agent-history.js';
 import { loadAgentImage } from '$lib/server/agent-image.js';
 import movieEditorPrompt from '$lib/server/prompts/movie-editor.md?raw';
 import { updateJobStatus } from '$lib/server/job-status.js';
 import { getOrCreateTranscription } from '$lib/server/transcription-cache.js';
+import { createMovieEditorInput } from '$lib/server/movie-editor-context.js';
+
+function getMaxAgentTurns() {
+	const configuredTurns = Number.parseInt(process.env.EDITOR_MAX_TURNS || '', 10);
+	// A ceiling prevents a broken tool loop from running indefinitely.
+	return Number.isInteger(configuredTurns) ? Math.max(4, Math.min(configuredTurns, 64)) : 50;
+}
 
 function getSettings() {
 	const apiKey = process.env.OPENAI_API_KEY || process.env.LLM_API_KEY;
@@ -216,45 +222,19 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 
 export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music) {
 	const settings = getSettings();
+	const maxTurns = getMaxAgentTurns();
 	const instructions = movieEditorPrompt.trim();
-	const durationRequest = targetMinutes
-		? `Aim for roughly ${targetMinutes} minutes, but prefer a natural edit over the exact number.`
-		: 'There is no target duration. Use as much or as little footage as the story needs.';
-	const musicSummary = music.tracks
-		.map(
-			(track, index) =>
-				`${index + 1}. ${track.title} by ${track.artist}\n   Music: ${track.musicPath}\n   Duration: ${track.duration.toFixed(1)}s · BPM: ${track.bpm.toFixed(1)} · Loudness: ${track.integratedLufs.toFixed(1)} LUFS\n   Vibes: ${track.vibes.join(', ')}\n   Beats and onsets: ${track.analysisPath}\n   Detailed timeline: ${track.timelinePath}`
-		)
-		.join('\n');
-	const musicOverview = await loadAgentImage('./music-analysis/overview.png', jobDirectory);
-	const content = [
-		{
-			type: 'input_text',
-			text: `${durationRequest}\nDesired vibe and selection criteria: ${vibe}\n\nAVAILABLE BACKGROUND MUSIC\n${musicSummary}`
-		},
-		{
-			type: 'input_image',
-			image_url: musicOverview.imageUrl,
-			detail: 'high'
-		}
-	];
-
-	for (const video of videos) {
-		content.push({
-			type: 'input_text',
-			text: `VIDEO ${video.index}: ${video.name}\nSource path: ./sources/${video.path.split('/').at(-1)}\nDuration: ${video.duration.toFixed(2)} seconds\nTranscript path: ./transcript-${video.index}.json\nContact sheet path: ./contact-sheet-${video.index}.jpg\nTranscript:\n${video.segments.map((segment) => `[${segment.start.toFixed(2)}-${Math.min(segment.end, video.duration).toFixed(2)}s] ${segment.text}`).join('\n') || '(No speech detected; judge this source visually.)'}`
-		});
-		content.push({
-			type: 'input_image',
-			image_url: await imageDataUrl(video.contactSheet),
-			detail: 'high'
-		});
-	}
-
-	const input = [{ type: 'message', role: 'user', content }];
+	const input = await createMovieEditorInput({
+		videos,
+		vibe,
+		targetMinutes,
+		jobDirectory,
+		music
+	});
 	await appendAgentHistory(jobDirectory, {
 		type: 'conversation_start',
-		model: settings.editorModel
+		model: settings.editorModel,
+		maxTurns
 	});
 
 	await updateJobStatus(jobDirectory, {
@@ -263,7 +243,7 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 	});
 
 	try {
-		for (let step = 0; step < 12; step += 1) {
+		for (let step = 0; step < maxTurns; step += 1) {
 			const result = await createAgentResponse(settings, instructions, input, jobDirectory, step);
 			input.push(...(result.output || []));
 			const toolCalls = (result.output || []).filter((item) => item.type === 'function_call');
@@ -356,7 +336,7 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 			return edit;
 		}
 
-		throw new Error('The editing agent exceeded its maximum number of Bash steps');
+		throw new Error(`The editing agent exceeded its maximum of ${maxTurns} model turns`);
 	} catch (err) {
 		await appendAgentHistory(jobDirectory, {
 			type: 'conversation_error',
