@@ -20,16 +20,19 @@ The main screen follows a deliberately small input flow:
 
 The editing agent receives the curated tracks under `./music`, plus precomputed aubio beat/onset timestamps, BPM and FFmpeg loudness measurements under `./music-analysis`. A full-library waveform overview is sent as image input, and detailed timestamped timelines can be opened with `load_image`. Run `npm run analyze:music` after changing `sounds/library.json` or replacing a curated track.
 
+When a specific sound effect materially improves an edit, the agent can use `download_sound` to search Openverse and place one CC0 result under `./downloaded-audio`. Downloads are restricted to approved audio hosts, 20 MB, 30 seconds, and three unique effects per movie. Files are validated with FFprobe, cached under `.vlogger/cache/audio/`, and recorded in `audio-credits.json` and `audio-credits.txt`. The tool does not download background music, and Openverse licence metadata is retained as provenance rather than treated as a legal guarantee.
+
 ## How it works
 
 1. The browser streams each selected source video to the local server process. The file is moved directly into its local job directory without a second copy or an application-level size limit.
 2. FFmpeg extracts compressed mono audio. Audio is kept whole unless it approaches the transcription API's file-size limit, then it is divided into the fewest safe chunks.
-3. Whisper generates segment-level timestamps that map spoken content precisely back to the source footage.
+3. GPT-4o Transcribe Diarize generates accurate timestamped, speaker-aware segments that map spoken content precisely back to the source footage. OpenRouter uses Whisper Large V3 because it preserves segment timestamps.
 4. FFmpeg skips non-keyframes and samples representative keyframes at short intervals, avoiding a full decode of every frame. Sharp combines those frames into one timestamped contact sheet per source video. Sampling starts at one frame per second for short clips, settles at ten-second intervals for typical footage, and adapts for very long videos to keep the sheet readable.
-5. GPT-5.6 Terra reviews every timestamped transcript and contact sheet together. It selects only the footage that serves the user's vibe and target length.
-6. Terra acts as an editing agent with a sandboxed Bash tool. It can inspect media with FFprobe and run FFmpeg commands to trim, normalize, and assemble the movie itself.
+5. GPT-5.6 Sol reviews every timestamped transcript and contact sheet together. It selects only the footage that serves the user's vibe and target length.
+6. Sol acts as an editing agent with a sandboxed Bash tool. It can inspect media with FFprobe and run FFmpeg commands to trim, normalize, and assemble the movie itself.
 7. Every Bash tool call includes a concise user-facing intent. The server records these intents in `status.json`, and the interface polls the local status endpoint to show live editing feedback without exposing private chain-of-thought.
-8. The agent writes the finished first cut to `vlogger-cut.mp4` and returns the exact source boundaries it used.
+8. When needed, the agent can download up to three short CC0 sound effects through the restricted Openverse tool; the sandboxed Bash tool itself remains offline.
+9. The agent writes the finished first cut to `vlogger-cut.mp4` and returns the exact source boundaries it used.
 
 The Bash tool runs inside the current job directory, cannot access the network, cannot read other files in the user's home directory, and receives no API credentials. Silent clips can be given a silent audio track when the agent combines them with spoken footage.
 
@@ -39,7 +42,7 @@ The Bash tool runs inside the current job directory, cannot access the network, 
 - Node.js
 - Homebrew `ffmpeg-full` and FFprobe available on `PATH`; this includes the text and subtitle renderers omitted by the smaller `ffmpeg` formula
 - aubio available on `PATH` when adding or replacing curated music tracks
-- An OpenAI or OpenRouter API key with access to Whisper and GPT-5.6 Terra
+- An OpenAI or OpenRouter API key with access to transcription and GPT-5.6 Sol models
 
 ## Setup
 
@@ -68,7 +71,7 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-1` and `openai/gpt-5.6-terra` model names.
+Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-large-v3` and `openai/gpt-5.6-sol` model names. Openverse works anonymously; an optional `OPENVERSE_API_TOKEN` can use registered API limits.
 
 ## Tests
 
@@ -129,6 +132,8 @@ When `DEBUG=true`, the server prints the absolute job directory as soon as proce
 ```
 
 This development-only log makes it easy to inspect transcripts, contact sheets, agent intermediates, and the current render while the job is running.
+
+Downloaded CC0 sound effects are cached across jobs under `.vlogger/cache/audio/`; each job keeps the local effects and their Openverse source and licence metadata.
 
 Transcripts are cached across jobs under `.vlogger/cache/transcriptions/`. The cache key includes the source video's SHA-256 content hash, the transcription model, and the cache format version. Renaming a byte-identical file still reuses its transcript; changing the file or transcription model creates a new entry. Duplicate files being processed concurrently also share one transcription request.
 

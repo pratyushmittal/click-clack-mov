@@ -4,10 +4,12 @@ import OpenAI from 'openai';
 import { runAgentBash } from '$lib/server/agent-bash.js';
 import { appendAgentHistory } from '$lib/server/agent-history.js';
 import { loadAgentImage } from '$lib/server/agent-image.js';
+import { downloadAgentSound } from '$lib/server/agent-sound.js';
 import movieEditorPrompt from '$lib/server/prompts/movie-editor.md?raw';
 import { updateJobStatus } from '$lib/server/job-status.js';
 import { getOrCreateTranscription } from '$lib/server/transcription-cache.js';
 import { createMovieEditorInput } from '$lib/server/movie-editor-context.js';
+import { transcriptionOptions } from '$lib/server/transcription-options.js';
 
 function getMaxAgentTurns() {
 	const configuredTurns = Number.parseInt(process.env.EDITOR_MAX_TURNS || '', 10);
@@ -25,23 +27,24 @@ function getSettings() {
 		openRouter,
 		baseURL: process.env.LLM_BASE_URL || (openRouter ? 'https://openrouter.ai/api/v1' : undefined),
 		transcriptionModel:
-			process.env.TRANSCRIPTION_MODEL || (openRouter ? 'openai/whisper-1' : 'whisper-1'),
-		editorModel: process.env.EDITOR_MODEL || (openRouter ? 'openai/gpt-5.6-terra' : 'gpt-5.6-terra')
+			process.env.TRANSCRIPTION_MODEL ||
+			(openRouter ? 'openai/whisper-large-v3' : 'gpt-4o-transcribe-diarize'),
+		editorModel: process.env.EDITOR_MODEL || (openRouter ? 'openai/gpt-5.6-sol' : 'gpt-5.6-sol')
 	};
 }
 
 async function transcribeChunk(chunkPath, settings) {
+	const options = transcriptionOptions(settings.transcriptionModel);
 	if (!settings.openRouter) {
 		const client = new OpenAI({ apiKey: settings.apiKey, baseURL: settings.baseURL });
 		return client.audio.transcriptions.create({
 			file: createReadStream(chunkPath),
 			model: settings.transcriptionModel,
-			response_format: 'verbose_json',
-			timestamp_granularities: ['segment']
+			...options
 		});
 	}
 
-	// OpenRouter accepts base64 audio and passes Whisper timestamp options through to OpenAI.
+	// OpenRouter accepts base64 audio and passes Whisper timestamp options through to its provider.
 	const result = await fetch(`${settings.baseURL}/audio/transcriptions`, {
 		method: 'POST',
 		headers: {
@@ -53,8 +56,7 @@ async function transcribeChunk(chunkPath, settings) {
 		body: JSON.stringify({
 			model: settings.transcriptionModel,
 			input_audio: { data: (await readFile(chunkPath)).toString('base64'), format: 'mp3' },
-			response_format: 'verbose_json',
-			timestamp_granularities: ['segment']
+			...options
 		})
 	});
 	const data = await result.json();
@@ -71,7 +73,8 @@ async function transcribeBatch(chunks, settings) {
 				.map((segment) => ({
 					start: chunk.offset + segment.start,
 					end: chunk.offset + segment.end,
-					text: segment.text.trim()
+					text: segment.text.trim(),
+					...(segment.speaker ? { speaker: segment.speaker } : {})
 				}));
 		})
 	);
@@ -142,6 +145,35 @@ const imageTool = {
 	}
 };
 
+const soundTool = {
+	type: 'function',
+	name: 'download_sound',
+	description:
+		'Search Openverse for one relevant CC0 sound effect, download it into the current job, and return its local path and provenance. Use only when a specific effect materially improves the edit. This tool does not download background music and allows at most three unique sounds per movie.',
+	strict: true,
+	parameters: {
+		type: 'object',
+		additionalProperties: false,
+		required: ['query', 'maxDurationSeconds', 'intent'],
+		properties: {
+			query: {
+				type: 'string',
+				description: 'A concise description of the sound effect, such as soft cinematic whoosh.'
+			},
+			maxDurationSeconds: {
+				type: 'number',
+				minimum: 0.25,
+				maximum: 30,
+				description: 'The longest acceptable sound effect in seconds.'
+			},
+			intent: {
+				type: 'string',
+				description: 'A concise user-facing summary of why this sound is being downloaded.'
+			}
+		}
+	}
+};
+
 const bashTool = {
 	type: 'function',
 	name: 'run_bash',
@@ -168,7 +200,7 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 		model: settings.editorModel,
 		instructions,
 		input,
-		tools: [bashTool, imageTool],
+		tools: [bashTool, imageTool, soundTool],
 		tool_choice: 'auto',
 		parallel_tool_calls: false,
 		max_output_tokens: 16_000,
@@ -281,6 +313,18 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 								{ type: 'input_text', text: `Loaded ${toolResult.path}.` },
 								{ type: 'input_image', image_url: toolResult.imageUrl, detail: 'high' }
 							]
+						};
+					} else if (toolCall.name === 'download_sound') {
+						try {
+							toolResult = await downloadAgentSound(args, jobDirectory);
+						} catch (err) {
+							// Network and catalog failures should not abort an otherwise viable movie edit.
+							toolResult = { error: err?.message || String(err) };
+						}
+						output = {
+							type: 'function_call_output',
+							call_id: toolCall.call_id,
+							output: JSON.stringify(toolResult)
 						};
 					} else {
 						throw new Error('The editor requested an unknown tool');

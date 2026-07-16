@@ -2,7 +2,7 @@
 
 SvelteKit (Svelte 5 runes) app with native CSS that turns uploaded vlog footage into an
 AI-edited first cut. The server uses FFmpeg for audio extraction, contact sheets,
-trimming, normalization, and assembly; Whisper creates segment-level timestamped transcripts; and GPT-5.6 Terra reviews
+trimming, normalization, and assembly; GPT-4o Transcribe Diarize creates speaker-aware timestamped transcripts; and GPT-5.6 Sol reviews
 all transcripts and timestamped contact sheets, then uses a sandboxed Bash tool to
 run FFmpeg and produce the final movie.
 
@@ -110,6 +110,7 @@ export async function POST({ request }) {
 - **transcription-cache.js:** content-addressed transcript cache under `.vlogger/cache/transcriptions/`; keyed by source SHA-256, model, and cache version; deduplicates concurrent identical files.
 - **music-library.js:** APFS-clones the curated `sounds/` tracks and precomputed `sounds-analysis/` beat maps into each editing job. Regenerate analysis with `npm run analyze:music`.
 - **movie-editor-context.js:** builds the dynamic developer context containing durations, transcripts, music metadata, and images; the user message remains exactly the submitted vibe.
+- **agent-sound.js:** downloads up to three short CC0 sound effects from Openverse, validates them with FFprobe, caches them by content, and records provenance per job.
 - _Add domain-specific server helpers here (AI clients, storage, scrapers). Keep all credential handling and third-party SDK calls server-only._
 
 ### Standards

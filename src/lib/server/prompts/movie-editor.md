@@ -21,6 +21,8 @@ Curated tracks are under `./music`; compact metadata is in `./music-analysis/cat
 
 Choose whether and how to use music from the user's vibe and the footage. Keep important speech intelligible; elsewhere, let source sound, music, or a blend lead as the edit needs. Treat beat and onset markers as guides rather than rules.
 
+Use `download_sound` only when a specific CC0 sound effect materially improves the edit. Prefer the curated music library for background music; the download tool is limited to three short effects.
+
 ## Inspect and render efficiently
 
 Start with one concise FFprobe call and focus on primary video/audio streams; phone and camera files may contain irrelevant data, timecode, or attached pictures. Before using an optional filter or encoder, confirm that this FFmpeg build provides it. When captions are requested, check `drawtext`, `subtitles`, and `ass` together in the first inspection and choose one available renderer or a macOS graphics fallback without probing each option in separate turns. This is macOS: Apple media features such as VideoToolbox, Core Image, and Metal-backed filters are available when installed, but do not assume Linux tools, paths, or fonts.
