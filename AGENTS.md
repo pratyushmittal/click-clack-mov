@@ -6,6 +6,13 @@ trimming, normalization, and assembly; Whisper creates segment-level timestamped
 all transcripts and timestamped contact sheets, then uses a sandboxed Bash tool to
 run FFmpeg and produce the final movie.
 
+## Platform
+
+- **macOS only.** Do not add or preserve Linux or Windows compatibility.
+- macOS-specific tools and APIs are allowed, including `sandbox-exec`, VideoToolbox, AudioToolbox, AVFoundation, Core Media, Core Image, and Metal.
+- Prefer hardware-accelerated media processing when supported and measurably faster.
+- Keep a macOS software fallback when hardware acceleration does not support an input or produces a worse quality trade-off.
+
 ## Commands
 
 - `npm run dev` — dev server (see **Dev** note about ports)
@@ -19,7 +26,7 @@ run FFmpeg and produce the final movie.
 ## Tech Stack
 
 SvelteKit 2 + Svelte 5 (runes), native component-scoped CSS, Vite 5, `@sveltejs/adapter-auto`,
-Zod validation, OpenAI Node SDK, and system FFmpeg/FFprobe binaries.
+Zod validation, OpenAI Node SDK, and macOS FFmpeg/FFprobe binaries with access to Apple media acceleration APIs.
 
 ## Env Variables (.env)
 

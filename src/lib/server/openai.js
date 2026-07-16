@@ -3,6 +3,8 @@ import { readFile, stat } from 'node:fs/promises';
 import OpenAI from 'openai';
 import { imageDataUrl } from '$lib/server/media.js';
 import { runAgentBash } from '$lib/server/agent-bash.js';
+import { appendAgentHistory } from '$lib/server/agent-history.js';
+import movieEditorPrompt from '$lib/server/prompts/movie-editor.md?raw';
 import { updateJobStatus } from '$lib/server/job-status.js';
 
 function getSettings() {
@@ -126,7 +128,27 @@ const bashTool = {
 	}
 };
 
-async function createAgentResponse(settings, input) {
+async function createAgentResponse(settings, instructions, input, jobDirectory, step) {
+	const request = {
+		model: settings.editorModel,
+		instructions,
+		input,
+		tools: [bashTool],
+		tool_choice: 'auto',
+		parallel_tool_calls: false,
+		max_output_tokens: 16_000,
+		text: {
+			format: {
+				type: 'json_schema',
+				name: 'vlog_edit',
+				description: 'The exact source clips rendered into the final vlog.',
+				strict: true,
+				schema: selectionSchema
+			}
+		}
+	};
+	await appendAgentHistory(jobDirectory, { type: 'model_request', step, request });
+
 	const baseURL = settings.baseURL || 'https://api.openai.com/v1';
 	const result = await fetch(`${baseURL}/responses`, {
 		method: 'POST',
@@ -137,35 +159,39 @@ async function createAgentResponse(settings, input) {
 				? { 'HTTP-Referer': 'http://localhost:5173', 'X-OpenRouter-Title': 'Vlogger' }
 				: {})
 		},
-		body: JSON.stringify({
-			model: settings.editorModel,
-			input,
-			tools: [bashTool],
-			tool_choice: 'auto',
-			parallel_tool_calls: false,
-			max_output_tokens: 16_000,
-			text: {
-				format: {
-					type: 'json_schema',
-					name: 'vlog_edit',
-					description: 'The exact source clips rendered into the final vlog.',
-					strict: true,
-					schema: selectionSchema
-				}
-			}
-		})
+		body: JSON.stringify(request)
 	});
-	const data = await result.json();
+	const responseText = await result.text();
+	let data;
+	try {
+		data = JSON.parse(responseText);
+	} catch {
+		// Upstream failures can return HTML or plain text instead of JSON.
+		await appendAgentHistory(jobDirectory, {
+			type: 'model_response',
+			step,
+			httpStatus: result.status,
+			raw: responseText
+		});
+		throw new Error('The editing agent returned an invalid response');
+	}
+	await appendAgentHistory(jobDirectory, {
+		type: 'model_response',
+		step,
+		httpStatus: result.status,
+		data
+	});
 	if (!result.ok) throw new Error(data.error?.message || data.error || 'The editing agent failed');
 	return data;
 }
 
 export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory) {
 	const settings = getSettings();
+	const instructions = movieEditorPrompt.trim();
 	const content = [
 		{
 			type: 'input_text',
-			text: `You are an autonomous vlog editor with a Bash tool. Create one coherent first cut close to ${targetMinutes} minutes.\nDesired vibe and selection criteria from the user: ${vibe}\n\nSelect footage solely on how well it serves the user's vibe, story, and target length. You do not need to use every source video.\n\nYou must use run_bash to inspect and edit the source files. Create the final movie at exactly ./vlogger-cut.mp4. Source videos are under ./sources. Timestamped transcripts are available as ./transcript-N.json, and contact sheets as ./contact-sheet-N.jpg. Never modify source files. You may create any intermediate files inside this job. Use FFmpeg/FFprobe to trim, normalize, and join the selected footage. The final MP4 should use broadly compatible H.264 video, AAC audio, yuv420p pixel format, and +faststart. Handle clips without audio by adding silence when needed.\n\nAfter the movie exists, return the title, summary, and the exact source clip boundaries used. Clip timestamps must stay within their source duration. The returned clips must match the rendered movie. Every run_bash call must include a concise intent that can be shown to the user as progress. Describe the action, not private chain-of-thought.`
+			text: `Create one coherent first cut close to ${targetMinutes} minutes.\nDesired vibe and selection criteria: ${vibe}`
 		}
 	];
 
@@ -181,64 +207,101 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 		});
 	}
 
+	const input = [{ type: 'message', role: 'user', content }];
+	await appendAgentHistory(jobDirectory, {
+		type: 'conversation_start',
+		model: settings.editorModel
+	});
+
 	await updateJobStatus(jobDirectory, {
 		phase: 'editing',
 		message: 'Reviewing transcripts and contact sheets'
 	});
-	const input = [{ type: 'message', role: 'user', content }];
-	for (let step = 0; step < 12; step += 1) {
-		const result = await createAgentResponse(settings, input);
-		input.push(...(result.output || []));
-		const toolCalls = (result.output || []).filter((item) => item.type === 'function_call');
 
-		if (toolCalls.length) {
-			for (const toolCall of toolCalls) {
-				if (toolCall.name !== 'run_bash') throw new Error('The editor requested an unknown tool');
-				const args = JSON.parse(toolCall.arguments);
-				await updateJobStatus(jobDirectory, {
-					phase: 'editing',
-					message: args.intent,
-					intent: true
-				});
-				const toolResult = await runAgentBash(args.script, jobDirectory);
-				input.push({
-					type: 'function_call_output',
-					call_id: toolCall.call_id,
-					output: JSON.stringify({ intent: args.intent, ...toolResult })
-				});
+	try {
+		for (let step = 0; step < 12; step += 1) {
+			const result = await createAgentResponse(settings, instructions, input, jobDirectory, step);
+			input.push(...(result.output || []));
+			const toolCalls = (result.output || []).filter((item) => item.type === 'function_call');
+
+			if (toolCalls.length) {
+				for (const toolCall of toolCalls) {
+					if (toolCall.name !== 'run_bash') throw new Error('The editor requested an unknown tool');
+					const args = JSON.parse(toolCall.arguments);
+					await appendAgentHistory(jobDirectory, {
+						type: 'tool_call',
+						step,
+						toolCall,
+						arguments: args
+					});
+					await updateJobStatus(jobDirectory, {
+						phase: 'editing',
+						message: args.intent,
+						intent: true
+					});
+					const toolResult = await runAgentBash(args.script, jobDirectory);
+					const output = {
+						type: 'function_call_output',
+						call_id: toolCall.call_id,
+						output: JSON.stringify({ intent: args.intent, ...toolResult })
+					};
+					await appendAgentHistory(jobDirectory, {
+						type: 'tool_result',
+						step,
+						callId: toolCall.call_id,
+						result: toolResult,
+						input: output
+					});
+					input.push(output);
+				}
+				continue;
 			}
-			continue;
-		}
 
-		try {
-			await stat(`${jobDirectory}/vlogger-cut.mp4`);
-		} catch {
-			input.push({
-				type: 'message',
-				role: 'user',
-				content: [
-					{
-						type: 'input_text',
-						text: 'The required ./vlogger-cut.mp4 does not exist yet. Use run_bash to create it before returning the final edit.'
-					}
-				]
+			try {
+				await stat(`${jobDirectory}/vlogger-cut.mp4`);
+			} catch {
+				const reminder = {
+					type: 'message',
+					role: 'user',
+					content: [
+						{
+							type: 'input_text',
+							text: 'The required ./vlogger-cut.mp4 does not exist yet. Use run_bash to create it before returning the final edit.'
+						}
+					]
+				};
+				await appendAgentHistory(jobDirectory, {
+					type: 'user_message',
+					step,
+					input: reminder
+				});
+				input.push(reminder);
+				continue;
+			}
+
+			await updateJobStatus(jobDirectory, {
+				phase: 'finalizing',
+				message: 'Checking the rendered movie and edit decisions'
 			});
-			continue;
+
+			const outputText =
+				result.output_text ||
+				(result.output || [])
+					.flatMap((item) => item.content || [])
+					.find((item) => item.type === 'output_text')?.text;
+			if (!outputText) throw new Error('The editor did not return its edit decisions');
+			const edit = JSON.parse(outputText);
+			await appendAgentHistory(jobDirectory, { type: 'conversation_complete', step, edit });
+			return edit;
 		}
 
-		await updateJobStatus(jobDirectory, {
-			phase: 'finalizing',
-			message: 'Checking the rendered movie and edit decisions'
+		throw new Error('The editing agent exceeded its maximum number of Bash steps');
+	} catch (err) {
+		await appendAgentHistory(jobDirectory, {
+			type: 'conversation_error',
+			message: err?.message || String(err),
+			stack: err?.stack
 		});
-
-		const outputText =
-			result.output_text ||
-			(result.output || [])
-				.flatMap((item) => item.content || [])
-				.find((item) => item.type === 'output_text')?.text;
-		if (!outputText) throw new Error('The editor did not return its edit decisions');
-		return JSON.parse(outputText);
+		throw err;
 	}
-
-	throw new Error('The editing agent exceeded its maximum number of Bash steps');
 }

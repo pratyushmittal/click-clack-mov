@@ -33,11 +33,16 @@ async function processVideo(file, index, files, importId, jobDirectory, sourceDi
 	const duration = await getDuration(filePath);
 	const contactSheet = path.join(jobDirectory, `contact-sheet-${index}.jpg`);
 	const audioDirectory = path.join(jobDirectory, `audio-${index}`);
+	const transcriptionDisabled = process.env.DISABLE_TRANSCRIPTION === 'true';
 	logger.info(`Analyzing ${file.originalName}`);
 	await updateJobStatus(jobDirectory, {
 		phase: 'analyzing',
 		message: `Analyzing video ${index + 1} of ${files.length}: ${file.originalName}`,
-		processingVideo: { index, contactSheetReady: false, transcriptReady: false }
+		processingVideo: {
+			index,
+			contactSheetReady: false,
+			transcriptReady: transcriptionDisabled
+		}
 	});
 
 	const contactSheetTask = (async () => {
@@ -50,14 +55,16 @@ async function processVideo(file, index, files, importId, jobDirectory, sourceDi
 			processingVideo: { index, contactSheetReady: true }
 		});
 	})();
-	const transcriptionTask = (async () => {
-		const chunks = await extractAudioChunks(filePath, audioDirectory);
-		const segments = await transcribeChunks(chunks);
-		await updateJobStatus(jobDirectory, {
-			processingVideo: { index, transcriptReady: true }
-		});
-		return segments;
-	})();
+	const transcriptionTask = transcriptionDisabled
+		? Promise.resolve([])
+		: (async () => {
+				const chunks = await extractAudioChunks(filePath, audioDirectory);
+				const segments = await transcribeChunks(chunks);
+				await updateJobStatus(jobDirectory, {
+					processingVideo: { index, transcriptReady: true }
+				});
+				return segments;
+			})();
 	const [, segments] = await Promise.all([contactSheetTask, transcriptionTask]);
 
 	await writeFile(

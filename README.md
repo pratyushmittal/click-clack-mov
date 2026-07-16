@@ -1,6 +1,12 @@
 # Vlogger
 
-Vlogger is a simple video trimmer, assembler, and AI movie maker that turns a collection of raw vlog files into a concise first cut.
+Vlogger is a macOS-only video trimmer, assembler, and AI movie maker that turns a collection of raw vlog files into a concise first cut.
+
+## Platform
+
+Vlogger deliberately targets macOS only. The application may rely on macOS-specific tools and media APIs such as `sandbox-exec`, VideoToolbox, AudioToolbox, AVFoundation, Core Media, Core Image, and Metal when they make processing faster or improve the result. We do not need to maintain Linux or Windows compatibility.
+
+For video processing, prefer hardware-accelerated decoding and encoding when it is supported and measurements show a meaningful speed benefit. Keep a macOS software path for unsupported formats and quality-sensitive operations where hardware encoding is not the best trade-off.
 
 ## MVP interface
 
@@ -25,8 +31,9 @@ The Bash tool runs inside the current job directory, cannot access the network, 
 
 ## Requirements
 
+- macOS
 - Node.js
-- FFmpeg and FFprobe available on `PATH`
+- FFmpeg and FFprobe available on `PATH`, preferably with VideoToolbox and AudioToolbox enabled
 - An OpenAI or OpenRouter API key with access to Whisper and GPT-5.6 Terra
 
 ## Setup
@@ -60,7 +67,7 @@ After submission, the drop area becomes a minimal processing stage with only thr
 
 ## Performance
 
-Video analysis runs two source files at a time by default. For each source, contact-sheet generation and audio transcription also run in parallel. Oversized audio chunks are transcribed two at a time.
+Video analysis runs two source files at a time by default. For each source, contact-sheet generation and audio transcription also run in parallel. Oversized audio chunks are transcribed two at a time. Future processing changes may use VideoToolbox, AudioToolbox, Metal, or other macOS media APIs instead of preserving cross-platform implementations.
 
 The concurrency can be adjusted in `.env`:
 
@@ -70,6 +77,14 @@ TRANSCRIPTION_CONCURRENCY=2
 ```
 
 Values from 1–4 are accepted. Higher values can improve throughput on a powerful machine, but may increase disk contention, CPU usage, memory usage, and API rate-limit errors.
+
+To temporarily skip audio extraction and transcription, use:
+
+```env
+DISABLE_TRANSCRIPTION=true
+```
+
+The editor will still receive every contact sheet and will treat each source as visual-only footage. Remove the setting or change it to `false` to restore transcription.
 
 ## Commands
 
@@ -89,8 +104,8 @@ When `DEBUG=true`, the server prints the absolute job directory as soon as proce
 
 This development-only log makes it easy to inspect transcripts, contact sheets, agent intermediates, and the current render while the job is running.
 
-Generated source files, audio chunks, contact sheets, edit decisions, live status and intent history, and movies are stored under `.vlogger/jobs/<job-id>/`. This directory is ignored by Git. The MVP does not yet remove old jobs automatically.
+Generated source files, audio chunks, contact sheets, edit decisions, live status, and movies are stored under `.vlogger/jobs/<job-id>/`. Each job also keeps an append-only `agent-history.jsonl` containing the model instructions, user input, raw model responses, Bash tool calls and results, validation turns, final edit, and errors. Embedded base64 media is replaced with a short placeholder containing its MIME type and original character count. This directory is ignored by Git and can contain private footage metadata and transcripts. The MVP does not yet remove old jobs automatically.
 
 ## Current scope
 
-This is a local, single-user MVP. Processing happens in one request, so the browser tab must remain open while the movie is being analyzed and rendered. Production deployment will need background jobs, durable object storage, appropriate transfer limits, authentication, cleanup policies, and progress events.
+This is a local, single-user, macOS-only MVP. Processing happens in one request, so the browser tab must remain open while the movie is being analyzed and rendered. The product is not intended to support Linux or Windows. A more durable macOS release will need background jobs, cleanup policies, recovery after interruption, and progress events that do not depend on an open browser request.
