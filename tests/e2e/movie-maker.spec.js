@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
@@ -13,6 +14,21 @@ async function addVideos(page) {
 	await expect(page.getByText(/0 MB · 0:08/)).toHaveCount(2);
 }
 
+test('accepts more than twelve source videos', async ({ page }) => {
+	const bytes = await readFile(videos[0]);
+	await page.goto('/');
+	await page.waitForLoadState('networkidle');
+	await page.locator('input[type="file"]').setInputFiles(
+		Array.from({ length: 13 }, (_, index) => ({
+			name: `clip-${index}.mp4`,
+			mimeType: 'video/mp4',
+			buffer: bytes
+		}))
+	);
+
+	await expect(page.getByRole('button', { name: /^Remove clip-/ })).toHaveCount(13);
+});
+
 test('reads local video metadata and suggests a 25% target', async ({ page }) => {
 	await page.goto('/');
 	await page.waitForLoadState('networkidle');
@@ -22,7 +38,25 @@ test('reads local video metadata and suggests a 25% target', async ({ page }) =>
 	await addVideos(page);
 	await expect
 		.poll(async () => Number(await page.getByLabel('Target output duration').inputValue()))
-		.toBeCloseTo(4, 0);
+		.toBeCloseTo(4 / 60, 2);
+});
+
+test('fills vibe and target time from presets', async ({ page }) => {
+	await page.goto('/');
+	await page.waitForLoadState('networkidle');
+
+	await page.getByRole('button', { name: 'Teasers' }).click();
+	await expect(page.getByLabel('Vibe')).toHaveValue(/Punchy teaser/);
+	await expect(page.getByLabel('Target output duration in minutes')).toHaveValue('0.5');
+
+	await page.getByRole('button', { name: 'Story mode' }).click();
+	await expect(page.getByLabel('Vibe')).toHaveValue(/Story-first edit/);
+	await expect(page.getByLabel('Target output duration in minutes')).toHaveCount(0);
+
+	await page.getByRole('button', { name: 'Reels' }).click();
+	await expect(page.getByLabel('Target output duration in minutes')).toHaveValue('0.75');
+	await page.getByLabel('Target output duration in minutes').fill('');
+	await expect(page.getByLabel('Target output duration in minutes')).toHaveValue('');
 });
 
 test('keeps previews moving through analysis, editing, and completion', async ({ page }) => {
@@ -66,6 +100,11 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	await page.getByRole('button', { name: 'Make my movie' }).click();
 
 	await expect(page.getByRole('heading', { name: 'Generating the transcript' })).toBeVisible();
+	const elapsed = page.locator('.copy p');
+	await expect(elapsed).toContainText('elapsed');
+	const firstElapsed = await elapsed.textContent();
+	await page.waitForTimeout(1100);
+	await expect.poll(() => elapsed.textContent()).not.toBe(firstElapsed);
 	const preview = page.getByLabel('Preview of clip-a.mp4');
 	await expect(preview).toBeVisible();
 	const firstTime = await preview.evaluate((video) => video.currentTime);
@@ -112,12 +151,14 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 				fileName: 'clip-a.mp4',
 				start: 0,
 				end: 4,
+				speed: 1,
 				reason: 'A useful opening beat.'
 			}
 		]
 	});
 
 	await expect(page.getByRole('heading', { name: 'A tiny test cut' })).toBeVisible();
+	await expect(page.getByText(/video · .* processing/)).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Download movie' })).toHaveAttribute(
 		'href',
 		'/api/jobs/test-job/video'

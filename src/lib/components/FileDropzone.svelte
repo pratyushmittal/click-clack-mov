@@ -60,7 +60,7 @@
 		<small
 			>Drag in your raw clips, or click to browse. MP4, MOV, WebM and other common video formats.</small
 		>
-		<em>Up to 12 videos</em>
+		<em>No fixed video limit</em>
 	</button>
 
 	<input

@@ -12,7 +12,7 @@
 		'Checking if that cut actually slaps'
 	];
 
-	let { files, status, message } = $props();
+	let { files, status, message, startedAt } = $props();
 	let video = $state();
 	let videoUrl = $state('');
 	let mediaIndex = $state(0);
@@ -20,6 +20,7 @@
 	let previousPhase = $state('');
 	let latestToolEvent = $state('');
 	let toolTitleIndex = $state(0);
+	let now = $state(Date.now());
 
 	let processingVideos = $derived(
 		Object.values(status.processingVideos || {}).sort((left, right) => left.index - right.index)
@@ -60,10 +61,13 @@
 		if (!processingVideo.contactSheetReady) return 'Building the camera roll';
 		return 'Wrapping up this video';
 	});
+	let elapsed = $derived(Math.max(0, Math.floor((now - startedAt) / 1000)));
 	let detail = $derived(
-		editing || !processingVideo
-			? message
-			: `Analyzing video ${processingVideo.index + 1} of ${files.length}: ${mediaFile.name}`
+		`${
+			editing || !processingVideo
+				? message
+				: `Analyzing video ${processingVideo.index + 1} of ${files.length}: ${mediaFile.name}`
+		} · ${timeLabel(elapsed)} elapsed`
 	);
 
 	$effect(() => {
@@ -81,6 +85,15 @@
 			(toolTitleIndex + 1 + Math.floor(Math.random() * (toolTitles.length - 1))) %
 			toolTitles.length;
 	});
+
+	function timeLabel(seconds) {
+		const hours = Math.floor(seconds / 3600);
+		const minutes = Math.floor((seconds % 3600) / 60);
+		const remainingSeconds = seconds % 60;
+		return hours
+			? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
+			: `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+	}
 
 	function advanceSlideshow() {
 		// Analysis keeps one source playing continuously; only editing uses the slideshow.
@@ -107,8 +120,12 @@
 
 	onMount(() => {
 		// The independent timer keeps moving while status polling and Bash calls continue.
-		const timer = setInterval(advanceSlideshow, 4000);
-		return () => clearInterval(timer);
+		const slideshowTimer = setInterval(advanceSlideshow, 4000);
+		const clockTimer = setInterval(() => (now = Date.now()), 1000);
+		return () => {
+			clearInterval(slideshowTimer);
+			clearInterval(clockTimer);
+		};
 	});
 
 	$effect(() => {

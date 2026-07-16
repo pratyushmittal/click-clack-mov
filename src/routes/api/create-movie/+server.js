@@ -10,16 +10,18 @@ const importsRoot = path.resolve('.vlogger/imports');
 const fileSchema = z.object({
 	storedName: z.string().regex(/^[a-zA-Z0-9._-]+$/),
 	originalName: z.string().trim().min(1).max(255),
-	size: z.number().nonnegative()
+	size: z.number().nonnegative(),
+	sha256: z.string().regex(/^[a-f0-9]{64}$/)
 });
 const requestSchema = z.object({
 	importId: z.string().uuid(),
-	files: z.array(fileSchema).min(1, 'Add at least one video file').max(12),
+	files: z.array(fileSchema).min(1, 'Add at least one video file'),
 	vibe: z.string().trim().min(3, 'Describe the vibe you want').max(1000),
-	targetMinutes: z.coerce
+	targetMinutes: z
 		.number()
 		.min(1 / 60)
 		.max(60)
+		.nullable()
 });
 
 export async function POST({ request }) {

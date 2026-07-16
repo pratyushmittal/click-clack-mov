@@ -12,9 +12,9 @@ For video processing, prefer hardware-accelerated decoding and encoding when it 
 
 The main screen follows a deliberately small input flow:
 
-- **Footage** — a large drop area for up to 12 source videos.
-- **Vibe** — a text input describing the desired feeling and the kinds of moments to keep.
-- **Target length** — defaults to 25% of the combined source duration and can be adjusted with a slider.
+- **Footage** — a large drop area for any number of source videos.
+- **Vibe** — a text input with presets for teasers, vlogs, story mode, reels, and slick cuts.
+- **Target length** — a compact optional minutes field. It defaults to 25% of the combined source duration, preset chips can replace it, and story mode removes the time limit entirely.
 
 ## How it works
 
@@ -103,6 +103,8 @@ When `DEBUG=true`, the server prints the absolute job directory as soon as proce
 ```
 
 This development-only log makes it easy to inspect transcripts, contact sheets, agent intermediates, and the current render while the job is running.
+
+Transcripts are cached across jobs under `.vlogger/cache/transcriptions/`. The cache key includes the source video's SHA-256 content hash, the transcription model, and the cache format version. Renaming a byte-identical file still reuses its transcript; changing the file or transcription model creates a new entry. Duplicate files being processed concurrently also share one transcription request.
 
 Generated source files, audio chunks, contact sheets, edit decisions, live status, and movies are stored under `.vlogger/jobs/<job-id>/`. Each job also keeps an append-only `agent-history.jsonl` containing the model instructions, user input, raw model responses, Bash tool calls and results, validation turns, final edit, and errors. Embedded base64 media is replaced with a short placeholder containing its MIME type and original character count. This directory is ignored by Git and can contain private footage metadata and transcripts. The MVP does not yet remove old jobs automatically.
 

@@ -4,8 +4,10 @@ import OpenAI from 'openai';
 import { imageDataUrl } from '$lib/server/media.js';
 import { runAgentBash } from '$lib/server/agent-bash.js';
 import { appendAgentHistory } from '$lib/server/agent-history.js';
+import { loadAgentImage } from '$lib/server/agent-image.js';
 import movieEditorPrompt from '$lib/server/prompts/movie-editor.md?raw';
 import { updateJobStatus } from '$lib/server/job-status.js';
+import { getOrCreateTranscription } from '$lib/server/transcription-cache.js';
 
 function getSettings() {
 	const apiKey = process.env.OPENAI_API_KEY || process.env.LLM_API_KEY;
@@ -69,8 +71,7 @@ async function transcribeBatch(chunks, settings) {
 	);
 }
 
-export async function transcribeChunks(chunks) {
-	const settings = getSettings();
+async function transcribeChunks(chunks, settings) {
 	const concurrency = Math.max(1, Math.min(Number(process.env.TRANSCRIPTION_CONCURRENCY) || 2, 4));
 	const segments = [];
 
@@ -81,6 +82,13 @@ export async function transcribeChunks(chunks) {
 	}
 
 	return segments.sort((left, right) => left.start - right.start);
+}
+
+export function transcribeVideo(sourceHash, createChunks) {
+	const settings = getSettings();
+	return getOrCreateTranscription(sourceHash, settings.transcriptionModel, async () =>
+		transcribeChunks(await createChunks(), settings)
+	);
 }
 
 const selectionSchema = {
@@ -95,13 +103,34 @@ const selectionSchema = {
 			items: {
 				type: 'object',
 				additionalProperties: false,
-				required: ['fileIndex', 'start', 'end', 'reason'],
+				required: ['fileIndex', 'start', 'end', 'speed', 'reason'],
 				properties: {
 					fileIndex: { type: 'integer' },
 					start: { type: 'number' },
 					end: { type: 'number' },
+					speed: { type: 'number', minimum: 0.25, maximum: 8 },
 					reason: { type: 'string' }
 				}
+			}
+		}
+	}
+};
+
+const imageTool = {
+	type: 'function',
+	name: 'load_image',
+	description:
+		'Load a JPEG, PNG, or WebP image from the current editing job as visual input. Use this only for a closer frame or image created during editing; the initial contact sheets are already visible.',
+	strict: true,
+	parameters: {
+		type: 'object',
+		additionalProperties: false,
+		required: ['path', 'intent'],
+		properties: {
+			path: { type: 'string', description: 'A path relative to the current job directory.' },
+			intent: {
+				type: 'string',
+				description: 'A concise user-facing summary of why this image is being inspected.'
 			}
 		}
 	}
@@ -133,7 +162,7 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 		model: settings.editorModel,
 		instructions,
 		input,
-		tools: [bashTool],
+		tools: [bashTool, imageTool],
 		tool_choice: 'auto',
 		parallel_tool_calls: false,
 		max_output_tokens: 16_000,
@@ -188,10 +217,13 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory) {
 	const settings = getSettings();
 	const instructions = movieEditorPrompt.trim();
+	const durationRequest = targetMinutes
+		? `Aim for roughly ${targetMinutes} minutes, but prefer a natural edit over the exact number.`
+		: 'There is no target duration. Use as much or as little footage as the story needs.';
 	const content = [
 		{
 			type: 'input_text',
-			text: `Create one coherent first cut close to ${targetMinutes} minutes.\nDesired vibe and selection criteria: ${vibe}`
+			text: `${durationRequest}\nDesired vibe and selection criteria: ${vibe}`
 		}
 	];
 
@@ -226,7 +258,6 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 
 			if (toolCalls.length) {
 				for (const toolCall of toolCalls) {
-					if (toolCall.name !== 'run_bash') throw new Error('The editor requested an unknown tool');
 					const args = JSON.parse(toolCall.arguments);
 					await appendAgentHistory(jobDirectory, {
 						type: 'tool_call',
@@ -239,12 +270,30 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 						message: args.intent,
 						intent: true
 					});
-					const toolResult = await runAgentBash(args.script, jobDirectory);
-					const output = {
-						type: 'function_call_output',
-						call_id: toolCall.call_id,
-						output: JSON.stringify({ intent: args.intent, ...toolResult })
-					};
+
+					let toolResult;
+					let output;
+					if (toolCall.name === 'run_bash') {
+						toolResult = await runAgentBash(args.script, jobDirectory);
+						output = {
+							type: 'function_call_output',
+							call_id: toolCall.call_id,
+							output: JSON.stringify({ intent: args.intent, ...toolResult })
+						};
+					} else if (toolCall.name === 'load_image') {
+						toolResult = await loadAgentImage(args.path, jobDirectory);
+						output = {
+							type: 'function_call_output',
+							call_id: toolCall.call_id,
+							output: [
+								{ type: 'input_text', text: `Loaded ${toolResult.path}.` },
+								{ type: 'input_image', image_url: toolResult.imageUrl, detail: 'high' }
+							]
+						};
+					} else {
+						throw new Error('The editor requested an unknown tool');
+					}
+
 					await appendAgentHistory(jobDirectory, {
 						type: 'tool_result',
 						step,

@@ -1,7 +1,7 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createContactSheet, extractAudioChunks, getDuration } from '$lib/server/media.js';
-import { runEditingAgent, transcribeChunks } from '$lib/server/openai.js';
+import { runEditingAgent, transcribeVideo } from '$lib/server/openai.js';
 import { createLogger } from '$lib/server/logger.js';
 import { updateJobStatus } from '$lib/server/job-status.js';
 
@@ -19,7 +19,8 @@ function normalizeClips(clips, videos) {
 		.map((clip) => ({
 			...clip,
 			start: Math.max(0, Math.min(Number(clip.start), videos[clip.fileIndex].duration)),
-			end: Math.max(0, Math.min(Number(clip.end), videos[clip.fileIndex].duration))
+			end: Math.max(0, Math.min(Number(clip.end), videos[clip.fileIndex].duration)),
+			speed: Math.max(0.25, Math.min(Number(clip.speed) || 1, 8))
 		}))
 		.filter((clip) => clip.end - clip.start >= 1);
 }
@@ -56,16 +57,21 @@ async function processVideo(file, index, files, importId, jobDirectory, sourceDi
 		});
 	})();
 	const transcriptionTask = transcriptionDisabled
-		? Promise.resolve([])
+		? Promise.resolve({ segments: [], cached: false })
 		: (async () => {
-				const chunks = await extractAudioChunks(filePath, audioDirectory);
-				const segments = await transcribeChunks(chunks);
+				const result = await transcribeVideo(file.sha256, () =>
+					extractAudioChunks(filePath, audioDirectory)
+				);
+				logger.info(
+					`${result.cached ? 'Reused cached' : 'Generated'} transcript for ${file.originalName}`
+				);
 				await updateJobStatus(jobDirectory, {
 					processingVideo: { index, transcriptReady: true }
 				});
-				return segments;
+				return result;
 			})();
-	const [, segments] = await Promise.all([contactSheetTask, transcriptionTask]);
+	const [, transcription] = await Promise.all([contactSheetTask, transcriptionTask]);
+	const segments = transcription.segments;
 
 	await writeFile(
 		path.join(jobDirectory, `transcript-${index}.json`),
@@ -122,7 +128,7 @@ export async function createMovie(importId, files, vibe, targetMinutes) {
 		id,
 		title: edit.title,
 		summary: edit.summary,
-		duration: clips.reduce((total, clip) => total + clip.end - clip.start, 0),
+		duration: await getDuration(path.join(jobDirectory, 'vlogger-cut.mp4')),
 		clips: clips.map((clip) => ({ ...clip, fileName: videos[clip.fileIndex].name })),
 		downloadUrl: `/api/jobs/${id}/video`
 	};

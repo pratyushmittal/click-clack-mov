@@ -1,8 +1,13 @@
 <script>
-	let { result, onReset } = $props();
+	let { result, processingSeconds, onReset } = $props();
 	function timeLabel(seconds) {
-		const minutes = Math.floor(seconds / 60);
-		return `${minutes}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
+		const total = Math.round(seconds);
+		const hours = Math.floor(total / 3600);
+		const minutes = Math.floor((total % 3600) / 60);
+		const remainingSeconds = total % 60;
+		return hours
+			? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
+			: `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 	}
 </script>
 
@@ -13,7 +18,7 @@
 				<p>Your first cut is ready</p>
 				<h2>{result.title}</h2>
 			</div>
-			<span>{timeLabel(result.duration)}</span>
+			<span>{timeLabel(result.duration)} video · {timeLabel(processingSeconds)} processing</span>
 		</div>
 		<p class="summary">{result.summary}</p>
 		<div class="actions">

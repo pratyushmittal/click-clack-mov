@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
@@ -23,6 +23,7 @@ test('streams a local video into the protected import directory', async ({ reque
 		expect(result.ok()).toBe(true);
 		expect(data.file.originalName).toBe('../test clip.mp4');
 		expect(data.file.storedName).toMatch(/^[a-f0-9-]{36}-\.\.-test-clip\.mp4$/);
+		expect(data.file.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
 		expect(await readFile(path.join(importsRoot, importId, data.file.storedName))).toEqual(bytes);
 	} finally {
 		await rm(path.join(importsRoot, importId), { recursive: true, force: true });
