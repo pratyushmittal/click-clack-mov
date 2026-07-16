@@ -28,7 +28,7 @@ When a specific sound effect materially improves an edit, the agent can use `dow
 
 1. The browser streams each selected source video to the local server process. The file is moved directly into its local job directory without a second copy or an application-level size limit.
 2. FFmpeg extracts compressed mono audio. Audio is kept whole unless it approaches the transcription API's file-size limit, then it is divided into the fewest safe chunks.
-3. GPT-4o Transcribe Diarize generates accurate timestamped, speaker-aware segments that map spoken content precisely back to the source footage. OpenRouter uses Whisper Large V3 because it preserves segment timestamps.
+3. Whisper generates timestamped segments that map spoken content precisely back to the source footage. OpenRouter uses the faster, lower-cost Whisper Large V3 Turbo model.
 4. FFmpeg skips non-keyframes and samples representative keyframes at short intervals, avoiding a full decode of every frame. Sharp combines those frames into one timestamped contact sheet per source video. Sampling starts at one frame per second for short clips, settles at ten-second intervals for typical footage, and adapts for very long videos to keep the sheet readable.
 5. GPT-5.6 Sol reviews every timestamped transcript and contact sheet together. It selects only the footage that serves the user's vibe and target length.
 6. Sol acts as an editing agent with a sandboxed Bash tool. It can inspect media with FFprobe and run FFmpeg commands to trim, normalize, and assemble the movie itself.
@@ -73,7 +73,7 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-large-v3` and `openai/gpt-5.6-sol` model names. Openverse works anonymously; an optional `OPENVERSE_API_TOKEN` can use registered API limits.
+Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-large-v3-turbo` and `openai/gpt-5.6-sol` model names. Openverse works anonymously; an optional `OPENVERSE_API_TOKEN` can use registered API limits.
 
 ## Tests
 

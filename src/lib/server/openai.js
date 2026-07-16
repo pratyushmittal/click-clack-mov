@@ -28,7 +28,7 @@ function getSettings() {
 		baseURL: process.env.LLM_BASE_URL || (openRouter ? 'https://openrouter.ai/api/v1' : undefined),
 		transcriptionModel:
 			process.env.TRANSCRIPTION_MODEL ||
-			(openRouter ? 'openai/whisper-large-v3' : 'gpt-4o-transcribe-diarize'),
+			(openRouter ? 'openai/whisper-large-v3-turbo' : 'whisper-1'),
 		editorModel: process.env.EDITOR_MODEL || (openRouter ? 'openai/gpt-5.6-sol' : 'gpt-5.6-sol')
 	};
 }

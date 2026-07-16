@@ -10,7 +10,7 @@ test('uses server-side diarization for direct OpenAI transcription', () => {
 });
 
 test('requests segment timestamps from Whisper models', () => {
-	expect(transcriptionOptions('openai/whisper-large-v3')).toEqual({
+	expect(transcriptionOptions('openai/whisper-large-v3-turbo')).toEqual({
 		response_format: 'verbose_json',
 		timestamp_granularities: ['segment'],
 		temperature: 0

@@ -109,93 +109,117 @@
 	}
 	.dropzone {
 		position: relative;
-		display: flex;
-		min-height: 20rem;
+		display: grid;
+		min-height: 22rem;
 		width: 100%;
-		flex-direction: column;
+		grid-template-columns: minmax(14rem, 0.8fr) minmax(18rem, 1.2fr);
+		grid-template-rows: auto auto auto;
+		align-content: center;
 		align-items: center;
-		justify-content: center;
 		overflow: hidden;
-		border: 2px dashed var(--ink);
-		border-radius: 1.45rem 1.8rem 1.35rem 1.95rem;
-		background: var(--lavender);
-		padding: 1.5rem;
+		border: 1px solid rgba(36, 31, 37, 0.1);
+		border-radius: 1.75rem;
+		background:
+			linear-gradient(120deg, rgba(217, 197, 229, 0.86), rgba(240, 224, 232, 0.72)), var(--lavender);
+		padding: clamp(1.5rem, 4vw, 3rem);
 		color: var(--ink);
-		text-align: center;
-		transition: 180ms ease;
+		text-align: left;
+		transition: 220ms ease;
 	}
 	.dropzone:hover,
 	.dropzone.dragging {
-		background: #e5d7ed;
-		box-shadow: inset 0 0 0 5px rgba(255, 249, 239, 0.55);
+		border-color: rgba(221, 114, 91, 0.35);
+		box-shadow: inset 0 0 0 5px rgba(255, 253, 248, 0.3);
+		transform: translateY(-2px);
 	}
 	.dropzone:focus-visible {
-		outline: 3px solid var(--coral-deep);
+		outline: 3px solid rgba(221, 114, 91, 0.5);
 		outline-offset: 4px;
 	}
 	.dropzone-glow {
 		position: absolute;
 		inset: 0;
 		background:
-			radial-gradient(circle at 10% 20%, rgba(245, 160, 133, 0.26) 0 0.45rem, transparent 0.5rem),
-			radial-gradient(circle at 86% 22%, rgba(146, 181, 199, 0.4) 0 0.65rem, transparent 0.7rem),
-			radial-gradient(circle at 80% 80%, rgba(224, 163, 52, 0.33) 0 0.55rem, transparent 0.6rem);
+			radial-gradient(circle at 8% 20%, rgba(245, 160, 133, 0.5) 0 0.42rem, transparent 0.48rem),
+			radial-gradient(circle at 88% 18%, rgba(146, 181, 199, 0.55) 0 0.7rem, transparent 0.76rem),
+			radial-gradient(circle at 82% 82%, rgba(224, 163, 52, 0.5) 0 0.62rem, transparent 0.68rem);
 		pointer-events: none;
 	}
 	.upload-illustration {
 		position: relative;
+		z-index: 1;
 		display: block;
-		width: 8.75rem;
-		height: 8.75rem;
-		margin-bottom: 0.35rem;
-		transition: 180ms ease;
+		grid-column: 1;
+		grid-row: 1 / 4;
+		width: min(17rem, 90%);
+		aspect-ratio: 1;
+		justify-self: center;
+		transition: 220ms ease;
+	}
+	.upload-illustration::before {
+		position: absolute;
+		inset: 12%;
+		border-radius: 35%;
+		background: rgba(255, 253, 248, 0.5);
+		content: '';
+		filter: blur(24px);
 	}
 	.upload-illustration img {
+		position: relative;
 		width: 100%;
 		height: 100%;
-		border-radius: 1.4rem;
+		border-radius: 2rem;
 		object-fit: cover;
 		mix-blend-mode: multiply;
 	}
 	.upload-arrow {
 		position: absolute;
-		right: -0.25rem;
-		bottom: 0.35rem;
+		right: 4%;
+		bottom: 8%;
 		display: grid;
-		width: 2.5rem;
-		height: 2.5rem;
+		width: 3.25rem;
+		height: 3.25rem;
 		place-items: center;
-		border: 2px solid var(--ink);
+		border: 5px solid rgba(255, 253, 248, 0.9);
 		border-radius: 999px;
-		background: var(--mustard);
-		box-shadow: 2px 2px 0 var(--ink);
+		background: linear-gradient(145deg, var(--mustard-light), var(--mustard));
+		box-shadow: 0 12px 28px rgba(98, 66, 18, 0.22);
 	}
 	.upload-arrow svg {
-		width: 1.2rem;
+		width: 1.25rem;
 	}
 	.dropzone:hover .upload-illustration {
-		transform: rotate(-2deg) translateY(-3px);
+		transform: rotate(-2deg) scale(1.025);
 	}
-	.dropzone strong {
-		position: relative;
-		font-family: var(--font-display);
-		font-size: clamp(1.5rem, 3vw, 1.9rem);
-		font-weight: 400;
-	}
-	.dropzone small {
-		position: relative;
-		max-width: 31rem;
-		margin-top: 0.35rem;
-		color: var(--ink-soft);
-		line-height: 1.55;
-	}
+	.dropzone strong,
+	.dropzone small,
 	.dropzone em {
 		position: relative;
-		margin-top: 1rem;
-		border: 1.5px solid var(--ink);
+		z-index: 1;
+		grid-column: 2;
+		justify-self: start;
+	}
+	.dropzone strong {
+		align-self: end;
+		font-size: clamp(2rem, 4vw, 3.3rem);
+		font-weight: 700;
+		letter-spacing: -0.055em;
+		line-height: 0.98;
+	}
+	.dropzone small {
+		max-width: 32rem;
+		margin-top: 0.75rem;
+		color: var(--ink-soft);
+		font-size: 0.92rem;
+		line-height: 1.6;
+	}
+	.dropzone em {
+		align-self: start;
+		margin-top: 1.35rem;
+		border: 1px solid rgba(36, 31, 37, 0.12);
 		border-radius: 999px;
-		background: var(--paper);
-		padding: 0.45rem 0.85rem;
+		background: rgba(255, 253, 248, 0.66);
+		padding: 0.55rem 0.9rem;
 		color: var(--ink);
 		font-family: var(--font-mono);
 		font-size: 0.6rem;
@@ -213,27 +237,27 @@
 	.file-grid {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.5rem;
+		gap: 0.55rem;
 	}
 	.file-card {
 		display: flex;
 		min-width: 0;
 		align-items: center;
 		gap: 0.75rem;
-		border: 1.5px solid var(--ink);
-		border-radius: 0.9rem 1.05rem 0.85rem 1.1rem;
-		background: var(--white);
+		border: 1px solid rgba(36, 31, 37, 0.1);
+		border-radius: 1rem;
+		background: var(--surface-strong);
 		padding: 0.72rem 0.85rem;
+		box-shadow: 0 7px 20px rgba(66, 45, 63, 0.05);
 	}
 	.play-icon {
 		display: grid;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2.35rem;
+		height: 2.35rem;
 		flex: 0 0 auto;
 		place-items: center;
-		border: 1.5px solid var(--ink);
-		border-radius: 0.65rem;
-		background: var(--blue);
+		border-radius: 0.75rem;
+		background: rgba(146, 181, 199, 0.55);
 		color: var(--ink);
 	}
 	.play-icon svg,
@@ -274,13 +298,36 @@
 		color: var(--ink-soft);
 	}
 	.remove-file:hover {
-		background: var(--coral);
+		background: rgba(245, 160, 133, 0.24);
 		color: var(--ink);
 	}
-	@media (max-width: 640px) {
+	@media (max-width: 760px) {
 		.dropzone {
-			min-height: 18rem;
+			min-height: 22rem;
+			grid-template-columns: 1fr;
+			grid-template-rows: auto auto auto auto;
+			padding: 1.5rem;
+			text-align: center;
 		}
+		.upload-illustration {
+			grid-column: 1;
+			grid-row: 1;
+			width: 9.5rem;
+		}
+		.dropzone strong,
+		.dropzone small,
+		.dropzone em {
+			grid-column: 1;
+			justify-self: center;
+		}
+		.dropzone strong {
+			font-size: clamp(1.8rem, 9vw, 2.5rem);
+		}
+		.dropzone em {
+			margin-top: 1rem;
+		}
+	}
+	@media (max-width: 640px) {
 		.file-grid {
 			grid-template-columns: 1fr;
 		}

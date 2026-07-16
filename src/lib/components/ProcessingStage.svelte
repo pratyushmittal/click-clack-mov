@@ -178,9 +178,10 @@
 <style>
 	.processing-stage {
 		overflow: hidden;
-		border: 2px solid var(--ink);
-		border-radius: 1.4rem 1.8rem 1.3rem 1.9rem;
-		background: var(--paper);
+		border: 1px solid rgba(36, 31, 37, 0.12);
+		border-radius: 1.75rem;
+		background: var(--surface-strong);
+		box-shadow: 0 26px 80px var(--shadow);
 	}
 	.media {
 		display: grid;
@@ -188,8 +189,7 @@
 		max-height: 36rem;
 		place-items: center;
 		overflow: hidden;
-		border-bottom: 2px solid var(--ink);
-		background: var(--lavender);
+		background: linear-gradient(145deg, var(--lavender), #eadff0);
 	}
 	.media video,
 	.media img {
@@ -205,25 +205,26 @@
 	}
 	.copy {
 		position: relative;
-		padding: 1.4rem 1.5rem 1.55rem;
+		padding: 1.55rem 1.5rem 1.7rem;
 		text-align: center;
 	}
 	.copy::before {
 		position: absolute;
-		top: -0.45rem;
+		top: 0;
 		left: 50%;
-		width: 5rem;
-		height: 0.8rem;
+		width: 4rem;
+		height: 3px;
+		border-radius: 999px;
+		background: linear-gradient(90deg, var(--coral), var(--mustard));
 		content: '';
-		background: rgba(224, 163, 52, 0.65);
-		transform: translateX(-50%) rotate(-1deg);
+		transform: translateX(-50%);
 	}
 	h2 {
 		margin: 0;
 		color: var(--ink);
-		font-family: var(--font-display);
-		font-size: clamp(1.35rem, 3vw, 1.85rem);
-		font-weight: 400;
+		font-size: clamp(1.45rem, 3vw, 2rem);
+		font-weight: 700;
+		letter-spacing: -0.035em;
 	}
 	p {
 		max-width: 44rem;
@@ -239,7 +240,6 @@
 	.waiting span {
 		width: 0.75rem;
 		height: 0.75rem;
-		border: 1px solid var(--ink);
 		border-radius: 999px;
 		background: var(--coral);
 		animation: bounce 900ms infinite alternate;

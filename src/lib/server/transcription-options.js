@@ -6,7 +6,7 @@ export function transcriptionOptions(model) {
 	// These models return text without the timestamps required to cut source footage.
 	if (model.endsWith('gpt-4o-transcribe') || model.endsWith('gpt-4o-mini-transcribe')) {
 		throw new Error(
-			`${model} does not provide segment timestamps; use gpt-4o-transcribe-diarize or a Whisper model`
+			`${model} does not provide segment timestamps; use a timestamped Whisper model such as openai/whisper-large-v3-turbo`
 		);
 	}
 

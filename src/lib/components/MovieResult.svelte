@@ -54,18 +54,20 @@
 <style>
 	.result-card {
 		overflow: hidden;
-		border: 3px solid var(--ink);
-		border-radius: 1.7rem 2.1rem 1.6rem 2.2rem;
-		background: var(--paper);
-		box-shadow: 9px 11px 0 rgba(36, 31, 37, 0.12);
+		border: 1px solid rgba(36, 31, 37, 0.12);
+		border-radius: 2rem;
+		background: var(--surface-strong);
+		box-shadow: 0 28px 90px var(--shadow);
 	}
 	header,
 	.decisions {
-		padding: clamp(1.5rem, 4vw, 2rem);
+		padding: clamp(1.5rem, 4vw, 2.25rem);
 	}
 	header {
-		border-bottom: 2px solid var(--ink);
-		background: linear-gradient(150deg, var(--lavender), #eadff0);
+		border-bottom: 1px solid rgba(36, 31, 37, 0.08);
+		background:
+			radial-gradient(circle at 92% 10%, rgba(245, 160, 133, 0.34), transparent 16rem),
+			linear-gradient(145deg, rgba(217, 197, 229, 0.75), rgba(255, 253, 248, 0.92));
 	}
 	.result-heading {
 		display: flex;
@@ -74,10 +76,10 @@
 		gap: 1.25rem;
 	}
 	.result-heading p {
-		margin: 0 0 0.5rem;
-		color: var(--ink);
+		margin: 0 0 0.55rem;
+		color: var(--coral-deep);
 		font-family: var(--font-mono);
-		font-size: 0.65rem;
+		font-size: 0.62rem;
 		font-weight: 700;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
@@ -85,23 +87,25 @@
 	h2 {
 		margin: 0;
 		color: var(--ink);
-		font-family: var(--font-display);
-		font-size: clamp(1.8rem, 4vw, 2.5rem);
-		font-weight: 400;
+		font-size: clamp(2rem, 5vw, 3.2rem);
+		font-weight: 700;
+		letter-spacing: -0.055em;
+		line-height: 1;
 	}
 	.result-heading > span {
-		border: 1.5px solid var(--ink);
+		border: 1px solid rgba(36, 31, 37, 0.1);
 		border-radius: 999px;
-		background: var(--mustard);
-		padding: 0.45rem 0.75rem;
+		background: rgba(255, 253, 248, 0.7);
+		padding: 0.5rem 0.8rem;
 		color: var(--ink);
 		font-family: var(--font-mono);
-		font-size: 0.7rem;
+		font-size: 0.67rem;
 		font-weight: 700;
+		white-space: nowrap;
 	}
 	.summary {
 		max-width: 42rem;
-		margin: 1.35rem 0 0;
+		margin: 1.4rem 0 0;
 		color: var(--ink-soft);
 		line-height: 1.7;
 	}
@@ -109,71 +113,78 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.75rem;
-		margin-top: 1.6rem;
+		margin-top: 1.75rem;
 	}
 	.actions a,
 	.actions button {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		border: 2px solid var(--ink);
-		border-radius: 0.85rem 1rem 0.8rem 1.1rem;
-		padding: 0.75rem 1.15rem;
+		border-radius: 0.9rem;
+		padding: 0.8rem 1.2rem;
 		font-size: 0.875rem;
 		font-weight: 700;
 		text-decoration: none;
+		transition: 160ms ease;
 	}
 	.actions a {
-		background: var(--coral);
-		box-shadow: 3px 3px 0 var(--ink);
-		color: var(--ink);
+		border: 0;
+		background: linear-gradient(145deg, var(--coral), var(--coral-deep));
+		box-shadow: 0 10px 24px rgba(221, 114, 91, 0.28);
+		color: var(--white);
 	}
 	.actions a:hover {
-		transform: translate(2px, 2px);
-		box-shadow: 1px 1px 0 var(--ink);
+		transform: translateY(-2px);
+		box-shadow: 0 14px 30px rgba(221, 114, 91, 0.34);
 	}
 	.actions svg {
 		width: 1rem;
 	}
 	.actions button {
-		background: var(--paper);
+		border: 1px solid rgba(36, 31, 37, 0.14);
+		background: rgba(255, 253, 248, 0.66);
 		color: var(--ink);
 	}
 	.actions button:hover {
-		background: var(--mustard-light);
+		background: var(--white);
+		transform: translateY(-1px);
 	}
 	h3 {
 		margin: 0 0 1rem;
 		color: var(--ink);
-		font-family: var(--font-display);
-		font-size: 1.35rem;
-		font-weight: 400;
+		font-size: 1.25rem;
+		letter-spacing: -0.025em;
 	}
 	.decision-list {
 		display: grid;
-		gap: 0.5rem;
+		gap: 0.55rem;
 	}
 	.decision {
 		display: grid;
 		grid-template-columns: 2rem 1fr auto;
 		align-items: center;
-		gap: 0.75rem;
-		border: 1.5px solid var(--ink);
-		border-radius: 0.85rem 1rem 0.8rem 1.05rem;
-		background: var(--white);
+		gap: 0.8rem;
+		border: 1px solid rgba(36, 31, 37, 0.09);
+		border-radius: 1rem;
+		background: rgba(255, 253, 248, 0.72);
 		padding: 1rem;
+		transition: 150ms ease;
+	}
+	.decision:hover {
+		border-color: rgba(36, 31, 37, 0.16);
+		box-shadow: 0 8px 24px rgba(66, 45, 63, 0.06);
+		transform: translateY(-1px);
 	}
 	.number {
 		display: grid;
 		width: 2rem;
 		height: 2rem;
 		place-items: center;
-		border: 1.5px solid var(--ink);
-		border-radius: 999px;
-		background: var(--blue);
+		border-radius: 0.7rem;
+		background: rgba(146, 181, 199, 0.5);
 		color: var(--ink);
 		font-family: var(--font-mono);
-		font-size: 0.7rem;
+		font-size: 0.68rem;
 	}
 	.decision div {
 		min-width: 0;
@@ -191,7 +202,7 @@
 	time {
 		color: var(--coral-deep);
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 	}
 	@media (max-width: 600px) {

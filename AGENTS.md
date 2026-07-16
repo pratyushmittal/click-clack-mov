@@ -2,7 +2,7 @@
 
 SvelteKit (Svelte 5 runes) app with native CSS that turns uploaded vlog footage into an
 AI-edited first cut. The server uses FFmpeg for audio extraction, contact sheets,
-trimming, normalization, and assembly; GPT-4o Transcribe Diarize creates speaker-aware timestamped transcripts; and GPT-5.6 Sol reviews
+trimming, normalization, and assembly; Whisper creates segment-level timestamped transcripts; and GPT-5.6 Sol reviews
 all transcripts and timestamped contact sheets, then uses a sandboxed Bash tool to
 run FFmpeg and produce the final movie.
 
