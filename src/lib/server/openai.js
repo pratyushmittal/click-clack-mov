@@ -18,9 +18,8 @@ function getMaxAgentTurns() {
 }
 
 function getSettings() {
-	// The app-specific key should override a global OpenAI shell key.
-	const apiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY;
-	if (!apiKey) throw new Error('Set OPENAI_API_KEY or LLM_API_KEY in .env');
+	const apiKey = process.env.LLM_API_KEY;
+	if (!apiKey) throw new Error('Set LLM_API_KEY in .env');
 
 	const openRouter = apiKey.startsWith('sk-or-');
 	return {

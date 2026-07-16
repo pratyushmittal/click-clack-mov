@@ -30,7 +30,7 @@ Zod validation, OpenAI Node SDK, and macOS FFmpeg/FFprobe binaries with access t
 
 ## Env Variables (.env)
 
-Set either `OPENAI_API_KEY` or `LLM_API_KEY`. OpenRouter keys are detected by their
+Set `LLM_API_KEY` to an OpenRouter or OpenAI key. OpenRouter keys are detected by their
 `sk-or-` prefix. Optional overrides: `LLM_BASE_URL`, `TRANSCRIPTION_MODEL`,
 `EDITOR_MODEL`, `EDITOR_MAX_TURNS`, and `DEBUG`. See `.env.example`.
 

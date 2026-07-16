@@ -102,6 +102,7 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	});
 
 	await page.goto('/');
+	await page.waitForLoadState('networkidle');
 	await addVideos(page);
 	await page.getByLabel('Vibe').fill('Warm and playful');
 	await page.getByRole('button', { name: 'Make my movie' }).click();

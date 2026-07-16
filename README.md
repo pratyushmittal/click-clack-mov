@@ -73,7 +73,7 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-Set either `OPENAI_API_KEY` or `LLM_API_KEY` in `.env`; `LLM_API_KEY` takes precedence when both exist. OpenRouter keys are detected automatically and use the corresponding `openai/whisper-large-v3-turbo` and `openai/gpt-5.6-sol` model names. Openverse works anonymously; an optional `OPENVERSE_API_TOKEN` can use registered API limits.
+Set `LLM_API_KEY` in `.env`. It may contain an OpenRouter or OpenAI key; OpenRouter keys are detected automatically and use the corresponding `openai/whisper-large-v3-turbo` and `openai/gpt-5.6-sol` model names. Openverse works anonymously; an optional `OPENVERSE_API_TOKEN` can use registered API limits.
 
 ## Tests
 
