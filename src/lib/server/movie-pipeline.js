@@ -6,6 +6,7 @@ import { createLogger } from '$lib/server/logger.js';
 import { updateJobStatus } from '$lib/server/job-status.js';
 import { prepareMusicLibrary } from '$lib/server/music-library.js';
 import { getOrCreateContactSheet } from '$lib/server/contact-sheet-cache.js';
+import { prepareFontLibrary } from '$lib/server/font-library.js';
 
 const logger = createLogger('MoviePipeline');
 const jobsRoot = path.resolve('.vlogger/jobs');
@@ -123,14 +124,15 @@ export async function createMovie(importId, files, vibe, targetMinutes) {
 		message: 'Preparing the local editing job'
 	});
 	const concurrency = Math.max(1, Math.min(Number(process.env.VIDEO_CONCURRENCY) || 2, 4));
-	const [videos, music] = await Promise.all([
+	const [videos, music, fonts] = await Promise.all([
 		processVideos(files, concurrency, (file, index) =>
 			processVideo(file, index, files, importId, jobDirectory, sourceDirectory)
 		),
-		prepareMusicLibrary(jobDirectory)
+		prepareMusicLibrary(jobDirectory),
+		prepareFontLibrary(jobDirectory)
 	]);
 
-	const edit = await runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music);
+	const edit = await runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music, fonts);
 	const clips = normalizeClips(edit.clips, videos);
 	if (!clips.length) throw new Error('The editor could not find any usable clips');
 

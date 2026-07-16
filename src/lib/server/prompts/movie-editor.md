@@ -51,7 +51,9 @@ Add concise bold text, centered in the frame:
 - a chapter or theme card whenever the narrative clearly changes;
 - one final closing line at the end.
 
-Use a large, bold display font that suits the requested vibe and remains immediately readable over video. Choose a face available to the selected renderer on macOS rather than depending on one specific family. Check safe margins and keep each card readable without covering important faces.
+Custom fonts are available under `./fonts`: use Archivo Black for bold modern titles, Coolvetica for clean or playful titles, Swomun Serif for editorial/story-led moments, and Casa Leru Italic only as a short accent. Pass the exact indexed path to `fontfile`; do not probe system fonts first.
+
+Use modern, oversized typography. Render text directly over the footage with no card, banner, rectangle, or translucent panel; for `drawtext`, keep `box=0`. Prefer short one- or two-line phrases, tight spacing, and a main title large enough to dominate the frame. Use a subtle shadow or thin contrasting outline for readability instead of a background box. Keep safe margins and avoid important faces.
 
 ## Editing techniques
 

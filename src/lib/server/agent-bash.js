@@ -43,7 +43,12 @@ export async function runAgentBash(script, jobDirectory) {
 				timeout: 15 * 60 * 1000,
 				maxBuffer: 20 * 1024 * 1024,
 				env: {
-					PATH: process.env.PATH || '/usr/bin:/bin:/usr/sbin:/sbin',
+					// Prefer Homebrew's full build so text and subtitle filters are consistently available.
+					PATH: [
+						'/opt/homebrew/opt/ffmpeg-full/bin',
+						'/usr/local/opt/ffmpeg-full/bin',
+						process.env.PATH || '/usr/bin:/bin:/usr/sbin:/sbin'
+					].join(':'),
 					HOME: jobDirectory,
 					TMPDIR: jobDirectory,
 					LANG: 'C.UTF-8'

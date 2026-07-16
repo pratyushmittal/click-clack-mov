@@ -259,7 +259,7 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 	return data;
 }
 
-export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music) {
+export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music, fonts) {
 	const settings = getSettings();
 	const maxTurns = getMaxAgentTurns();
 	const instructions = movieEditorPrompt.trim();
@@ -268,7 +268,8 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 		vibe,
 		targetMinutes,
 		jobDirectory,
-		music
+		music,
+		fonts
 	});
 	await appendAgentHistory(jobDirectory, {
 		type: 'conversation_start',

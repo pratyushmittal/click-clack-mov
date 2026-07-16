@@ -14,6 +14,7 @@ test('keeps media in a file index and the user message limited to the vibe', () 
 		],
 		vibe: 'A warm, reflective travel story',
 		targetMinutes: 2,
+		fonts: ['./fonts/archivo-black.ttf'],
 		music: {
 			tracks: [
 				{
@@ -33,6 +34,8 @@ test('keeps media in a file index and the user message limited to the vibe', () 
 	expect(context).toContain('Transcript: ./transcript-0.json');
 	expect(context).toContain('Contact sheet: ./contact-sheet-0.jpg');
 	expect(context).toContain('Catalog: ./music-analysis/catalog.json');
+	expect(context).toContain('FONT FILE INDEX');
+	expect(context).toContain('./fonts/archivo-black.ttf');
 	expect(context).not.toContain('Hello there');
 	expect(context).not.toContain('data:image');
 	expect(input[1]).toEqual({
