@@ -140,10 +140,20 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 
 	const editingPreview = page.getByLabel(/Preview of clip-/);
 	await expect(editingPreview).toBeVisible({ timeout: 5000 });
-	const firstPreview = await editingPreview.getAttribute('src');
+	const firstPreview = await editingPreview.getAttribute('aria-label');
+	const firstFilter = await editingPreview.evaluate((video) => getComputedStyle(video).filter);
+	expect(firstFilter).not.toBe('none');
 	await expect
-		.poll(() => editingPreview.getAttribute('src'), { timeout: 5000 })
+		.poll(() => editingPreview.getAttribute('aria-label'), { timeout: 5000 })
 		.not.toBe(firstPreview);
+	await expect
+		.poll(() => editingPreview.getAttribute('aria-label'), { timeout: 5000 })
+		.toBe(firstPreview);
+	await expect
+		.poll(() => editingPreview.evaluate((video) => getComputedStyle(video).filter), {
+			timeout: 5000
+		})
+		.not.toBe(firstFilter);
 	await expect(page.getByText('Rendering the first cut')).toBeVisible();
 
 	finishMovie({

@@ -11,11 +11,20 @@
 		'Snipping out the waffle',
 		'Checking if that cut actually slaps'
 	];
+	const slideshowFilters = [
+		'grayscale(1) contrast(1.2)',
+		'invert(1) grayscale(1) contrast(1.1)',
+		'sepia(0.85) saturate(1.4) contrast(1.05)',
+		'hue-rotate(180deg) saturate(1.8) contrast(1.08)'
+	];
 
 	let { files, status, message, startedAt } = $props();
 	let video = $state();
 	let videoUrl = $state('');
 	let mediaIndex = $state(0);
+	let slideshowOrder = $state([]);
+	let slideshowPosition = $state(0);
+	let slideshowPass = $state(0);
 	let showingContactSheets = $state(false);
 	let previousPhase = $state('');
 	let latestToolEvent = $state('');
@@ -38,7 +47,7 @@
 		editing
 			? showingContactSheets && contactSheets.length
 				? Number(contactSheets[mediaIndex % contactSheets.length][0])
-				: mediaIndex % Math.max(files.length, 1)
+				: (slideshowOrder[slideshowPosition] ?? 0)
 			: (processingVideo?.index ?? 0)
 	);
 	let mediaFile = $derived(files[mediaFileIndex]?.file);
@@ -48,6 +57,9 @@
 			: ''
 	);
 	let newestEvent = $derived(status.events?.at(-1));
+	let previewFilter = $derived(
+		editing ? slideshowFilters[slideshowPass % slideshowFilters.length] : 'none'
+	);
 	let title = $derived.by(() => {
 		if (status.phase === 'finalizing') return 'Finishing your movie';
 		if (editing) {
@@ -73,8 +85,19 @@
 	$effect(() => {
 		if (status.phase === previousPhase) return;
 		previousPhase = status.phase;
-		mediaIndex = 0;
-		showingContactSheets = status.phase === 'editing';
+
+		if (status.phase === 'editing') {
+			mediaIndex = 0;
+			showingContactSheets = contactSheets.length > 0;
+			slideshowOrder = Array.from({ length: files.length }, (_, index) => index).sort(
+				() => Math.random() - 0.5
+			);
+			slideshowPosition = 0;
+			slideshowPass = 0;
+		} else if (!editing) {
+			mediaIndex = 0;
+			showingContactSheets = false;
+		}
 	});
 
 	$effect(() => {
@@ -101,21 +124,25 @@
 
 		if (showingContactSheets) {
 			if (mediaIndex + 1 < contactSheets.length) mediaIndex += 1;
-			else {
-				showingContactSheets = false;
-				mediaIndex = Math.floor(Math.random() * Math.max(files.length, 1));
-			}
+			else showingContactSheets = false;
 			return;
 		}
 
-		const count = files.length;
-		if (count > 1) {
-			const current = mediaIndex % count;
-			const next = Math.floor(Math.random() * (count - 1));
-			mediaIndex = next >= current ? next + 1 : next;
-		} else if (video?.duration) {
-			video.currentTime = Math.random() * Math.max(0, video.duration - 5);
+		const lastPosition = slideshowOrder.length - 1;
+		if (slideshowPosition < lastPosition) {
+			slideshowPosition += 1;
+			return;
 		}
+
+		const previousFile = slideshowOrder[lastPosition];
+		const nextOrder = Array.from({ length: files.length }, (_, index) => index).sort(
+			() => Math.random() - 0.5
+		);
+		// Rotate the deck so pass boundaries never show the same file twice.
+		if (nextOrder.length > 1 && nextOrder[0] === previousFile) nextOrder.push(nextOrder.shift());
+		slideshowOrder = nextOrder;
+		slideshowPosition = 0;
+		slideshowPass += 1;
 	}
 
 	onMount(() => {
@@ -143,7 +170,7 @@
 		if (!video) return;
 		video.playbackRate = editing ? 1.5 : 2;
 		if (editing && video.duration)
-			video.currentTime = Math.random() * Math.max(0, video.duration - 5);
+			video.currentTime = Math.random() * Math.max(0, video.duration - 8);
 		video.play().catch(() => {});
 	}
 </script>
@@ -161,6 +188,8 @@
 				src={videoUrl}
 				muted
 				playsinline
+				loop={editing && files.length === 1}
+				style:filter={previewFilter}
 				onloadedmetadata={playPreview}
 				aria-label={`Preview of ${mediaFile.name}`}
 			></video>
@@ -202,6 +231,7 @@
 	}
 	.media video {
 		object-fit: cover;
+		transition: filter 500ms ease;
 	}
 	.copy {
 		position: relative;

@@ -115,6 +115,7 @@ export async function POST({ request }) {
 - **api-response.js:** `apiSuccess`, `apiError`, `validationError`, `handleApiError`
 - **logger.js:** `createLogger` → `logger.debug/info/warn/error` (`debug` gated by `DEBUG=true`)
 - **transcription-cache.js:** content-addressed transcript cache under `.vlogger/cache/transcriptions/`; keyed by source SHA-256, model, and cache version; deduplicates concurrent identical files.
+- **contact-sheet-cache.js:** content-addressed camera-roll cache under `.vlogger/cache/contact-sheets/`; keyed by source SHA-256 and cache version; APFS-clones results into jobs and deduplicates concurrent identical files.
 - **music-library.js:** APFS-clones the curated `sounds/` tracks and precomputed `sounds-analysis/` beat maps into each editing job. Regenerate analysis with `npm run analyze:music`.
 - **movie-editor-context.js:** builds a compact developer file index; the agent reads transcripts with Bash and contact sheets with `load_images`, while the user message remains exactly the submitted vibe.
 - **agent-sound.js:** downloads up to three short CC0 sound effects from Openverse, validates them with FFprobe, caches them by content, and records provenance per job.

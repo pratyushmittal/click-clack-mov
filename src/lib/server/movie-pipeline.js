@@ -5,6 +5,7 @@ import { runEditingAgent, transcribeVideo } from '$lib/server/openai.js';
 import { createLogger } from '$lib/server/logger.js';
 import { updateJobStatus } from '$lib/server/job-status.js';
 import { prepareMusicLibrary } from '$lib/server/music-library.js';
+import { getOrCreateContactSheet } from '$lib/server/contact-sheet-cache.js';
 
 const logger = createLogger('MoviePipeline');
 const jobsRoot = path.resolve('.vlogger/jobs');
@@ -48,7 +49,12 @@ async function processVideo(file, index, files, importId, jobDirectory, sourceDi
 	});
 
 	const contactSheetTask = (async () => {
-		await createContactSheet(filePath, contactSheet, duration);
+		const result = await getOrCreateContactSheet(file.sha256, contactSheet, (outputPath) =>
+			createContactSheet(filePath, outputPath, duration)
+		);
+		logger.info(
+			`${result.cached ? 'Reused cached' : 'Generated'} camera roll for ${file.originalName}`
+		);
 		await updateJobStatus(jobDirectory, {
 			contactSheet: {
 				index,
