@@ -108,6 +108,7 @@ export async function POST({ request }) {
 - **api-response.js:** `apiSuccess`, `apiError`, `validationError`, `handleApiError`
 - **logger.js:** `createLogger` → `logger.debug/info/warn/error` (`debug` gated by `DEBUG=true`)
 - **transcription-cache.js:** content-addressed transcript cache under `.vlogger/cache/transcriptions/`; keyed by source SHA-256, model, and cache version; deduplicates concurrent identical files.
+- **music-library.js:** APFS-clones the curated `sounds/` tracks and precomputed `sounds-analysis/` beat maps into each editing job. Regenerate analysis with `npm run analyze:music`.
 - _Add domain-specific server helpers here (AI clients, storage, scrapers). Keep all credential handling and third-party SDK calls server-only._
 
 ### Standards

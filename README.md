@@ -16,6 +16,10 @@ The main screen follows a deliberately small input flow:
 - **Vibe** — a text input with presets for teasers, vlogs, story mode, reels, and slick cuts.
 - **Target length** — a compact optional minutes field. It defaults to 25% of the combined source duration, preset chips can replace it, and story mode removes the time limit entirely.
 
+## Background music
+
+The editing agent receives seven curated tracks under `./music`, plus precomputed aubio beat/onset timestamps, BPM and FFmpeg loudness measurements under `./music-analysis`. A full-library waveform overview is sent as image input, and detailed timestamped timelines can be opened with `load_image`. Run `npm run analyze:music` after changing `sounds/library.json` or replacing a curated track.
+
 ## How it works
 
 1. The browser streams each selected source video to the local server process. The file is moved directly into its local job directory without a second copy or an application-level size limit.
@@ -34,6 +38,7 @@ The Bash tool runs inside the current job directory, cannot access the network, 
 - macOS
 - Node.js
 - FFmpeg and FFprobe available on `PATH`, preferably with VideoToolbox and AudioToolbox enabled
+- aubio available on `PATH` when adding or replacing curated music tracks
 - An OpenAI or OpenRouter API key with access to Whisper and GPT-5.6 Terra
 
 ## Setup
@@ -93,6 +98,7 @@ The editor will still receive every contact sheet and will treat each source as 
 - `npm run lint` — check formatting and lint the code
 - `npm run format` — format the project
 - `npm run build` — create a production build
+- `npm run analyze:music` — regenerate music beat maps, loudness data, and waveform timelines
 
 ## Local output
 

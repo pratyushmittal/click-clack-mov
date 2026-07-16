@@ -4,6 +4,7 @@ import { createContactSheet, extractAudioChunks, getDuration } from '$lib/server
 import { runEditingAgent, transcribeVideo } from '$lib/server/openai.js';
 import { createLogger } from '$lib/server/logger.js';
 import { updateJobStatus } from '$lib/server/job-status.js';
+import { prepareMusicLibrary } from '$lib/server/music-library.js';
 
 const logger = createLogger('MoviePipeline');
 const jobsRoot = path.resolve('.vlogger/jobs');
@@ -116,11 +117,14 @@ export async function createMovie(importId, files, vibe, targetMinutes) {
 		message: 'Preparing the local editing job'
 	});
 	const concurrency = Math.max(1, Math.min(Number(process.env.VIDEO_CONCURRENCY) || 2, 4));
-	const videos = await processVideos(files, concurrency, (file, index) =>
-		processVideo(file, index, files, importId, jobDirectory, sourceDirectory)
-	);
+	const [videos, music] = await Promise.all([
+		processVideos(files, concurrency, (file, index) =>
+			processVideo(file, index, files, importId, jobDirectory, sourceDirectory)
+		),
+		prepareMusicLibrary(jobDirectory)
+	]);
 
-	const edit = await runEditingAgent(videos, vibe, targetMinutes, jobDirectory);
+	const edit = await runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music);
 	const clips = normalizeClips(edit.clips, videos);
 	if (!clips.length) throw new Error('The editor could not find any usable clips');
 

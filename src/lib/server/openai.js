@@ -214,16 +214,28 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 	return data;
 }
 
-export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory) {
+export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music) {
 	const settings = getSettings();
 	const instructions = movieEditorPrompt.trim();
 	const durationRequest = targetMinutes
 		? `Aim for roughly ${targetMinutes} minutes, but prefer a natural edit over the exact number.`
 		: 'There is no target duration. Use as much or as little footage as the story needs.';
+	const musicSummary = music.tracks
+		.map(
+			(track, index) =>
+				`${index + 1}. ${track.title} by ${track.artist}\n   Music: ${track.musicPath}\n   Duration: ${track.duration.toFixed(1)}s · BPM: ${track.bpm.toFixed(1)} · Loudness: ${track.integratedLufs.toFixed(1)} LUFS\n   Vibes: ${track.vibes.join(', ')}\n   Beats and onsets: ${track.analysisPath}\n   Detailed timeline: ${track.timelinePath}`
+		)
+		.join('\n');
+	const musicOverview = await loadAgentImage('./music-analysis/overview.png', jobDirectory);
 	const content = [
 		{
 			type: 'input_text',
-			text: `${durationRequest}\nDesired vibe and selection criteria: ${vibe}`
+			text: `${durationRequest}\nDesired vibe and selection criteria: ${vibe}\n\nAVAILABLE BACKGROUND MUSIC\n${musicSummary}`
+		},
+		{
+			type: 'input_image',
+			image_url: musicOverview.imageUrl,
+			detail: 'high'
 		}
 	];
 
@@ -247,7 +259,7 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory)
 
 	await updateJobStatus(jobDirectory, {
 		phase: 'editing',
-		message: 'Reviewing transcripts and contact sheets'
+		message: 'Reviewing footage and background music'
 	});
 
 	try {

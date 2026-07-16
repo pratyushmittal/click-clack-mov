@@ -1,0 +1,65 @@
+{
+	"license": {
+		"name": "Mixkit Stock Music Free License",
+		"page": "https://mixkit.co/license/",
+		"note": "Use in rendered video projects; do not redistribute as a standalone music library."
+	},
+	"tracks": [
+		{
+			"id": "cinematic-uplifting-driving-ambition",
+			"fileName": "cinematic-uplifting-driving-ambition.mp3",
+			"title": "Driving Ambition",
+			"artist": "Ahjay Stelino",
+			"vibes": ["cinematic", "uplifting", "hopeful", "motivational"],
+			"source": "https://assets.mixkit.co/music/32/32.mp3"
+		},
+		{
+			"id": "chill-relaxed-serene-view",
+			"fileName": "chill-relaxed-serene-view.mp3",
+			"title": "Serene View",
+			"artist": "Arulo",
+			"vibes": ["chill", "atmospheric", "relaxed", "background"],
+			"source": "https://assets.mixkit.co/music/443/443.mp3"
+		},
+		{
+			"id": "funk-positive-gimme-that-groove",
+			"fileName": "funk-positive-gimme-that-groove.mp3",
+			"title": "Gimme that Groove!",
+			"artist": "Michael Ramir C.",
+			"vibes": ["funk", "positive", "energetic", "playful"],
+			"source": "https://assets.mixkit.co/music/872/872.mp3"
+		},
+		{
+			"id": "atmospheric-world-sun-and-his-daughter",
+			"fileName": "atmospheric-world-sun-and-his-daughter.mp3",
+			"title": "Sun and His Daughter",
+			"artist": "Eugenio Mininni",
+			"vibes": ["atmospheric", "reflective", "world", "cinematic"],
+			"source": "https://assets.mixkit.co/music/580/580.mp3"
+		},
+		{
+			"id": "jazz-reflective-beautiful-dream",
+			"fileName": "jazz-reflective-beautiful-dream.mp3",
+			"title": "Beautiful Dream",
+			"artist": "Diego Nava",
+			"vibes": ["jazz", "reflective", "romantic", "acoustic"],
+			"source": "https://assets.mixkit.co/music/493/493.mp3"
+		},
+		{
+			"id": "electronic-slick-tech-house-vibes",
+			"fileName": "electronic-slick-tech-house-vibes.mp3",
+			"title": "Tech House Vibes",
+			"artist": "Alejandro Magaña (A. M.)",
+			"vibes": ["electronic", "slick", "modern", "nightlife"],
+			"source": "https://assets.mixkit.co/music/130/130.mp3"
+		},
+		{
+			"id": "travel-positive-night-sky-hip-hop",
+			"fileName": "travel-positive-night-sky-hip-hop.mp3",
+			"title": "Night Sky Hip Hop",
+			"artist": "Michael Ramir C.",
+			"vibes": ["travel", "positive", "relaxed", "beach"],
+			"source": "https://assets.mixkit.co/music/970/970.mp3"
+		}
+	]
+}

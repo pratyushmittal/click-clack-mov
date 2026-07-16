@@ -14,6 +14,12 @@ Use `run_bash` for FFmpeg, FFprobe, and shell work. Use `load_image` only when a
 
 Every tool call must include a short, user-facing intent describing the action, not private reasoning.
 
+## Background music
+
+Curated tracks are under `./music`; compact metadata is in `./music-analysis/catalog.json`, and exact beat/onset timestamps are in each track's analysis JSON. The initial music overview shows every full waveform with a timestamp grid and beat guides. Use `load_image` only for a closer timeline.
+
+Choose music from the user's vibe and the footage, or omit it when it would weaken the story. Align important visual changes with nearby beats or natural musical changes when useful, but do not force every cut onto a beat. The brighter four-beat markers are guides, not guaranteed musical downbeats. Keep speech intelligible by lowering or ducking music, preserve useful source sound, and fade music naturally at its boundaries.
+
 ## Inspect and render efficiently
 
 Start with one concise FFprobe call and focus on primary video/audio streams; phone and camera files may contain irrelevant data, timecode, or attached pictures. Check that optional filters and encoders exist before using them. This is macOS: Apple media features such as VideoToolbox, Core Image, and Metal-backed filters are available when installed, but do not assume Linux tools, paths, or fonts.
