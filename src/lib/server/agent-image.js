@@ -42,5 +42,18 @@ export async function loadAgentImages(imagePaths, jobDirectory) {
 		throw new Error('Load between one and six images at a time');
 	}
 
-	return Promise.all(imagePaths.map((imagePath) => loadAgentImage(imagePath, jobDirectory)));
+	const results = await Promise.all(
+		imagePaths.map(async (imagePath) => {
+			try {
+				return { image: await loadAgentImage(imagePath, jobDirectory) };
+			} catch (err) {
+				// Generated frame counts can be lower than requested near the end of a video.
+				return { error: { path: imagePath, message: err?.message || String(err) } };
+			}
+		})
+	);
+	return {
+		images: results.flatMap((result) => (result.image ? [result.image] : [])),
+		errors: results.flatMap((result) => (result.error ? [result.error] : []))
+	};
 }

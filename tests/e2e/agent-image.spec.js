@@ -39,11 +39,27 @@ test('loads a small batch of images', async () => {
 
 	const result = await loadAgentImages(['./first.png', './second.png'], jobDirectory);
 
-	expect(result.map((image) => image.path)).toEqual(['./first.png', './second.png']);
+	expect(result.images.map((image) => image.path)).toEqual(['./first.png', './second.png']);
+	expect(result.errors).toEqual([]);
 });
 
 test('limits image batches to six files', async () => {
 	await expect(loadAgentImages(Array(7).fill('./frame.png'), '/tmp')).rejects.toThrow(
 		'Load between one and six images at a time'
 	);
+});
+
+test('keeps available images when one generated frame is missing', async () => {
+	const jobDirectory = await mkdtemp(path.join(tmpdir(), 'vlogger-images-partial-'));
+	await writeFile(path.join(jobDirectory, 'end-01.png'), tinyPng);
+
+	const result = await loadAgentImages(['./end-01.png', './end-02.png'], jobDirectory);
+
+	expect(result.images.map((image) => image.path)).toEqual(['./end-01.png']);
+	expect(result.errors).toEqual([
+		{
+			path: './end-02.png',
+			message: expect.stringContaining('no such file or directory')
+		}
+	]);
 });

@@ -224,16 +224,35 @@ async function executeAgentTool(toolCall, args, jobDirectory) {
 	}
 
 	if (toolCall.name === 'load_images') {
-		const result = await loadAgentImages(args.paths, jobDirectory);
+		let result;
+		try {
+			result = await loadAgentImages(args.paths, jobDirectory);
+		} catch (err) {
+			// Tool input mistakes should return to the agent instead of aborting the edit.
+			result = { images: [], errors: [{ message: err?.message || String(err) }] };
+		}
+		const failures = result.errors.length
+			? [
+					{
+						type: 'input_text',
+						text: `Could not load: ${result.errors
+							.map((error) => `${error.path || 'image'} (${error.message})`)
+							.join(', ')}. Continue with the loaded images or generate replacements.`
+					}
+				]
+			: [];
 		return {
 			result,
 			output: {
 				type: 'function_call_output',
 				call_id: toolCall.call_id,
-				output: result.flatMap((image) => [
-					{ type: 'input_text', text: `Loaded ${image.path}.` },
-					{ type: 'input_image', image_url: image.imageUrl, detail: 'high' }
-				])
+				output: [
+					...result.images.flatMap((image) => [
+						{ type: 'input_text', text: `Loaded ${image.path}.` },
+						{ type: 'input_image', image_url: image.imageUrl, detail: 'high' }
+					]),
+					...failures
+				]
 			}
 		};
 	}
