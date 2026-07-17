@@ -120,6 +120,7 @@ export async function POST({ request }) {
 - **music-library.js:** APFS-clones the curated `sounds/` tracks and precomputed `sounds-analysis/` beat maps into each editing job. Regenerate analysis with `npm run analyze:music`.
 - **movie-editor-context.js:** builds a compact developer file index; the agent reads transcripts with Bash and contact sheets with `load_images`, while the user message remains exactly the submitted vibe.
 - **agent-sound.js:** downloads up to three short CC0 sound effects from Openverse, validates them with FFprobe, caches them by content, and records provenance per job.
+- **editor-export.js:** copies the local FCP7 XML authoring reference into the job, continues the completed editing response, and caches a portable Adobe Premiere-compatible project ZIP.
 - _Add domain-specific server helpers here (AI clients, storage, scrapers). Keep all credential handling and third-party SDK calls server-only._
 
 ### Standards

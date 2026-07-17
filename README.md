@@ -35,8 +35,21 @@ When a specific sound effect materially improves an edit, the agent can use `dow
 7. Every Bash tool call includes a concise user-facing intent. The server records these intents in `status.json`, and the interface polls the local status endpoint to show live editing feedback without exposing private chain-of-thought.
 8. When needed, the agent can download up to three short CC0 sound effects through the restricted Openverse tool; the sandboxed Bash tool itself remains offline.
 9. The agent writes the finished first cut to `vlogger-cut.mp4` and returns the exact source boundaries it used.
+10. **Export to Premiere** continues that exact agent conversation and creates a portable ZIP containing a Final Cut Pro 7 XML (`xmeml` version 5), all timeline-referenced media, and relinking notes. It preserves cuts, tracks, audio, titles, transitions, speed changes, and supported effects as editable timeline elements rather than exporting another flattened movie.
 
 The Bash tool runs inside the current job directory, cannot access the network, cannot read other files in the user's home directory, and receives no API credentials. Silent clips can be given a silent audio track when the agent combines them with spoken footage.
+
+## Editable project export
+
+The result screen offers both **Download movie** and **Export to Premiere**. The editor export uses Final Cut Pro 7 XML because Premiere can import this interchange format directly; modern `.fcpxml` is not used. The original editing response ID is retained in `agent-history.jsonl`, so the export request continues the same model conversation with its prior decisions and Bash commands instead of asking a fresh agent to reverse-engineer the MP4. Before that continuation starts, the server copies the self-contained authoring guide from `src/lib/server/references/final-cut-pro-7-xml.md` into the job as `premiere-xml-reference.md`; the follow-up user turn explicitly tells the agent to read it first.
+
+The generated `click-clack-mov-premiere.zip` contains:
+
+- an `xmeml` version 5 XML timeline;
+- every source, music, sound-effect, and generated graphic referenced by that timeline;
+- a README with relinking notes and any FFmpeg-only effect that needed a closest editable equivalent.
+
+The XML points to the original local job paths so Premiere on the same Mac can usually link immediately. The packaged media makes the project portable when those paths are unavailable. Cross-editor interchange cannot represent every FFmpeg filter exactly, so the export favors editable layers and documents approximations instead of flattening the project. Completed ZIPs are cached in their job directory, so another click downloads the existing export without another model run.
 
 ## Requirements
 
@@ -84,7 +97,7 @@ npx playwright install chromium
 npm test
 ```
 
-The Playwright suite starts the local SvelteKit server and exercises the browser-facing workflow with small committed video fixtures. External AI calls are mocked, while file selection, metadata reading, target-length calculation, status polling, continuous video playback, contact-sheet sequencing, the editing slideshow, and the final result view run in a real Chromium browser.
+The Playwright suite starts the local SvelteKit server and exercises the browser-facing workflow with small committed video fixtures. External AI calls are mocked, while file selection, metadata reading, target-length calculation, status polling, continuous video playback, contact-sheet sequencing, the editing slideshow, the final result view, and the Premiere project download run in a real Chromium browser.
 
 Use `npm run test:e2e:ui` to inspect and debug the flow interactively.
 
@@ -139,7 +152,7 @@ Downloaded CC0 sound effects are cached across jobs under `.vlogger/cache/audio/
 
 Transcripts are cached across jobs under `.vlogger/cache/transcriptions/`. The cache key includes the source video's SHA-256 content hash, the transcription model, and the cache format version. Renaming a byte-identical file still reuses its transcript; changing the file or transcription model creates a new entry. Duplicate files being processed concurrently also share one transcription request.
 
-Generated source files, audio chunks, contact sheets, edit decisions, live status, and movies are stored under `.vlogger/jobs/<job-id>/`. Each job also keeps an append-only `agent-history.jsonl` containing the model instructions, user input, raw model responses, Bash tool calls and results, validation turns, final edit, and errors. Embedded base64 media is replaced with a short placeholder containing its MIME type and original character count. This directory is ignored by Git and can contain private footage metadata and transcripts. The MVP does not yet remove old jobs automatically.
+Generated source files, audio chunks, contact sheets, edit decisions, live status, movies, and editable project exports are stored under `.vlogger/jobs/<job-id>/`. Each job also keeps an append-only `agent-history.jsonl` containing the model instructions, user input, raw model responses, Bash tool calls and results, validation turns, final edit, and errors. Embedded base64 media is replaced with a short placeholder containing its MIME type and original character count. This directory is ignored by Git and can contain private footage metadata and transcripts. The MVP does not yet remove old jobs automatically.
 
 ## Current scope
 

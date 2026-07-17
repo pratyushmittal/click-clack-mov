@@ -100,6 +100,25 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 		expect(data.targetMinutes).toBeCloseTo(4 / 60, 2);
 		await route.fulfill({ json: { success: true, result: await movieResult } });
 	});
+	await page.route('**/api/jobs/test-job/editor-export', async (route) => {
+		if (route.request().method() === 'POST') {
+			await route.fulfill({
+				json: {
+					success: true,
+					downloadUrl: '/api/jobs/test-job/editor-export'
+				}
+			});
+			return;
+		}
+
+		await route.fulfill({
+			body: 'editable-project',
+			contentType: 'application/zip',
+			headers: {
+				'Content-Disposition': 'attachment; filename="click-clack-mov-premiere.zip"'
+			}
+		});
+	});
 
 	await page.goto('/');
 	await page.waitForLoadState('networkidle');
@@ -181,4 +200,9 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 		'href',
 		'/api/jobs/test-job/video'
 	);
+
+	const downloadPromise = page.waitForEvent('download');
+	await page.getByRole('button', { name: 'Export to Premiere' }).click();
+	const download = await downloadPromise;
+	expect(download.suggestedFilename()).toBe('click-clack-mov-premiere.zip');
 });

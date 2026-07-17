@@ -1,4 +1,4 @@
-import { appendFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 function historyValue(key, value) {
@@ -16,4 +16,17 @@ export function appendAgentHistory(jobDirectory, event) {
 		path.join(jobDirectory, 'agent-history.jsonl'),
 		`${JSON.stringify({ createdAt: new Date().toISOString(), ...event }, historyValue)}\n`
 	);
+}
+
+export async function getLastAgentResponseId(jobDirectory) {
+	const history = await readFile(path.join(jobDirectory, 'agent-history.jsonl'), 'utf8');
+	const events = history.trim().split('\n').map(JSON.parse);
+
+	for (let index = events.length - 1; index >= 0; index -= 1) {
+		if (events[index].type === 'model_response' && events[index].data?.id) {
+			return events[index].data.id;
+		}
+	}
+
+	throw new Error('The original editing conversation is not available for export');
 }

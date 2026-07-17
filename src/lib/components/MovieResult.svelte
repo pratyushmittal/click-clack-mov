@@ -1,5 +1,25 @@
 <script>
+	import { createEditorExport } from '$lib/js/movie-maker.js';
+
 	let { result, processingSeconds, onReset } = $props();
+	let exporting = $state(false);
+	let exportError = $state('');
+	async function exportToPremiere() {
+		exporting = true;
+		exportError = '';
+		try {
+			const data = await createEditorExport(result.id);
+			const link = document.createElement('a');
+			link.href = data.downloadUrl;
+			link.download = 'click-clack-mov-premiere.zip';
+			link.click();
+		} catch (err) {
+			exportError = err?.message || 'Could not create the editable project';
+		} finally {
+			exporting = false;
+		}
+	}
+
 	function timeLabel(seconds) {
 		const total = Math.round(seconds);
 		const hours = Math.floor(total / 3600);
@@ -31,8 +51,19 @@
 					aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" /></svg
 				>Download movie</a
 			>
+			<button class="export" type="button" onclick={exportToPremiere} disabled={exporting}>
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"><path d="M4 4h16v16H4zM8 8h4a3 3 0 0 1 0 6H8V8zm0 6v3" /></svg
+				>
+				{exporting ? 'Building editable project…' : 'Export to Premiere'}
+			</button>
 			<button type="button" onclick={onReset}>Start another</button>
 		</div>
+		{#if exportError}<p class="export-error" role="alert">{exportError}</p>{/if}
 	</header>
 	<div class="decisions">
 		<h3>Edit decisions</h3>
@@ -148,6 +179,26 @@
 	.actions button:hover {
 		background: var(--white);
 		transform: translateY(-1px);
+	}
+	.actions .export {
+		border-color: rgba(71, 76, 131, 0.2);
+		background: linear-gradient(145deg, var(--lavender), var(--blue));
+		box-shadow: 0 10px 24px rgba(71, 76, 131, 0.18);
+	}
+	.actions .export:hover {
+		background: linear-gradient(145deg, var(--lavender), var(--blue));
+		box-shadow: 0 14px 30px rgba(71, 76, 131, 0.24);
+	}
+	.actions button:disabled {
+		cursor: wait;
+		opacity: 0.65;
+		transform: none;
+	}
+	.export-error {
+		margin: 0.75rem 0 0;
+		color: var(--coral-deep);
+		font-size: 0.8rem;
+		font-weight: 700;
 	}
 	h3 {
 		margin: 0 0 1rem;

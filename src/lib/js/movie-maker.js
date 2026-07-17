@@ -26,3 +26,7 @@ export async function createMovie({ files, vibe, targetMinutes, onImport, onJob 
 	onJob?.(importId);
 	return apiPost('/api/create-movie', { importId, files: importedFiles, vibe, targetMinutes });
 }
+
+export function createEditorExport(jobId) {
+	return apiPost(`/api/jobs/${jobId}/editor-export`, {});
+}

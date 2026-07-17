@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { appendAgentHistory } from '../../src/lib/server/agent-history.js';
+import { appendAgentHistory, getLastAgentResponseId } from '../../src/lib/server/agent-history.js';
 
 test('keeps agent events as an append-only JSONL history', async () => {
 	const jobDirectory = await mkdtemp(path.join(os.tmpdir(), 'vlogger-history-'));
@@ -34,6 +34,29 @@ test('keeps agent events as an append-only JSONL history', async () => {
 		expect(await readFile(path.join(jobDirectory, 'agent-history.jsonl'), 'utf8')).not.toContain(
 			'very-large-image'
 		);
+	} finally {
+		await rm(jobDirectory, { recursive: true, force: true });
+	}
+});
+
+test('finds the response that completed the original editing conversation', async () => {
+	const jobDirectory = await mkdtemp(path.join(os.tmpdir(), 'vlogger-history-response-'));
+
+	try {
+		await appendAgentHistory(jobDirectory, {
+			type: 'model_response',
+			data: { id: 'response-first' }
+		});
+		await appendAgentHistory(jobDirectory, {
+			type: 'model_response',
+			data: { id: 'response-final' }
+		});
+		await appendAgentHistory(jobDirectory, {
+			type: 'export_model_response',
+			data: { id: 'response-from-an-earlier-export-attempt' }
+		});
+
+		expect(await getLastAgentResponseId(jobDirectory)).toBe('response-final');
 	} finally {
 		await rm(jobDirectory, { recursive: true, force: true });
 	}

@@ -2,10 +2,11 @@ import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import OpenAI from 'openai';
 import { runAgentBash } from '$lib/server/agent-bash.js';
-import { appendAgentHistory } from '$lib/server/agent-history.js';
+import { appendAgentHistory, getLastAgentResponseId } from '$lib/server/agent-history.js';
 import { loadAgentImages } from '$lib/server/agent-image.js';
 import { downloadAgentSound } from '$lib/server/agent-sound.js';
 import movieEditorPrompt from '$lib/server/prompts/movie-editor.md?raw';
+import movieEditorExportPrompt from '$lib/server/prompts/movie-editor-export.md?raw';
 import { updateJobStatus } from '$lib/server/job-status.js';
 import { getOrCreateTranscription } from '$lib/server/transcription-cache.js';
 import { createMovieEditorInput } from '$lib/server/movie-editor-context.js';
@@ -99,6 +100,13 @@ export function transcribeVideo(sourceHash, createChunks) {
 		transcribeChunks(await createChunks(), settings)
 	);
 }
+
+const exportSchema = {
+	type: 'object',
+	additionalProperties: false,
+	required: ['summary'],
+	properties: { summary: { type: 'string' } }
+};
 
 const selectionSchema = {
 	type: 'object',
@@ -201,26 +209,102 @@ const bashTool = {
 	}
 };
 
-async function createAgentResponse(settings, instructions, input, jobDirectory, step) {
+async function executeAgentTool(toolCall, args, jobDirectory) {
+	if (toolCall.name === 'run_bash') {
+		const result = await runAgentBash(args.script, jobDirectory);
+		return {
+			result,
+			output: {
+				type: 'function_call_output',
+				call_id: toolCall.call_id,
+				output: JSON.stringify({ intent: args.intent, ...result })
+			}
+		};
+	}
+
+	if (toolCall.name === 'load_images') {
+		const result = await loadAgentImages(args.paths, jobDirectory);
+		return {
+			result,
+			output: {
+				type: 'function_call_output',
+				call_id: toolCall.call_id,
+				output: result.flatMap((image) => [
+					{ type: 'input_text', text: `Loaded ${image.path}.` },
+					{ type: 'input_image', image_url: image.imageUrl, detail: 'high' }
+				])
+			}
+		};
+	}
+
+	if (toolCall.name === 'download_sound') {
+		let result;
+		try {
+			result = await downloadAgentSound(args, jobDirectory);
+		} catch (err) {
+			// Network and catalog failures should not abort an otherwise viable movie edit.
+			result = { error: err?.message || String(err) };
+		}
+		return {
+			result,
+			output: {
+				type: 'function_call_output',
+				call_id: toolCall.call_id,
+				output: JSON.stringify(result)
+			}
+		};
+	}
+
+	throw new Error('The editor requested an unknown tool');
+}
+
+function responseOutputText(result) {
+	return (
+		result.output_text ||
+		(result.output || [])
+			.flatMap((item) => item.content || [])
+			.find((item) => item.type === 'output_text')?.text
+	);
+}
+
+async function createAgentResponse(
+	settings,
+	instructions,
+	input,
+	jobDirectory,
+	step,
+	{
+		schema = selectionSchema,
+		schemaName = 'vlog_edit',
+		tools = [bashTool, imageTool, soundTool],
+		previousResponseId,
+		historyType = 'model'
+	} = {}
+) {
 	const request = {
 		model: settings.editorModel,
 		instructions,
 		input,
-		tools: [bashTool, imageTool, soundTool],
+		tools,
 		tool_choice: 'auto',
 		parallel_tool_calls: false,
 		max_output_tokens: 16_000,
+		store: true,
+		...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
 		text: {
 			format: {
 				type: 'json_schema',
-				name: 'vlog_edit',
-				description: 'The exact source clips rendered into the final vlog.',
+				name: schemaName,
+				description:
+					schemaName === 'vlog_edit'
+						? 'The exact source clips rendered into the final vlog.'
+						: 'The completed editable project export.',
 				strict: true,
-				schema: selectionSchema
+				schema
 			}
 		}
 	};
-	await appendAgentHistory(jobDirectory, { type: 'model_request', step, request });
+	await appendAgentHistory(jobDirectory, { type: `${historyType}_request`, step, request });
 
 	const baseURL = settings.baseURL || 'https://api.openai.com/v1';
 	const result = await fetch(`${baseURL}/responses`, {
@@ -241,20 +325,20 @@ async function createAgentResponse(settings, instructions, input, jobDirectory, 
 	} catch {
 		// Upstream failures can return HTML or plain text instead of JSON.
 		await appendAgentHistory(jobDirectory, {
-			type: 'model_response',
+			type: `${historyType}_response`,
 			step,
 			httpStatus: result.status,
 			raw: responseText
 		});
-		throw new Error('The editing agent returned an invalid response');
+		throw new Error('The agent returned an invalid response');
 	}
 	await appendAgentHistory(jobDirectory, {
-		type: 'model_response',
+		type: `${historyType}_response`,
 		step,
 		httpStatus: result.status,
 		data
 	});
-	if (!result.ok) throw new Error(data.error?.message || data.error || 'The editing agent failed');
+	if (!result.ok) throw new Error(data.error?.message || data.error || 'The agent failed');
 	return data;
 }
 
@@ -302,41 +386,11 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 						intent: true
 					});
 
-					let toolResult;
-					let output;
-					if (toolCall.name === 'run_bash') {
-						toolResult = await runAgentBash(args.script, jobDirectory);
-						output = {
-							type: 'function_call_output',
-							call_id: toolCall.call_id,
-							output: JSON.stringify({ intent: args.intent, ...toolResult })
-						};
-					} else if (toolCall.name === 'load_images') {
-						toolResult = await loadAgentImages(args.paths, jobDirectory);
-						output = {
-							type: 'function_call_output',
-							call_id: toolCall.call_id,
-							output: toolResult.flatMap((image) => [
-								{ type: 'input_text', text: `Loaded ${image.path}.` },
-								{ type: 'input_image', image_url: image.imageUrl, detail: 'high' }
-							])
-						};
-					} else if (toolCall.name === 'download_sound') {
-						try {
-							toolResult = await downloadAgentSound(args, jobDirectory);
-						} catch (err) {
-							// Network and catalog failures should not abort an otherwise viable movie edit.
-							toolResult = { error: err?.message || String(err) };
-						}
-						output = {
-							type: 'function_call_output',
-							call_id: toolCall.call_id,
-							output: JSON.stringify(toolResult)
-						};
-					} else {
-						throw new Error('The editor requested an unknown tool');
-					}
-
+					const { result: toolResult, output } = await executeAgentTool(
+						toolCall,
+						args,
+						jobDirectory
+					);
 					await appendAgentHistory(jobDirectory, {
 						type: 'tool_result',
 						step,
@@ -376,11 +430,7 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 				message: 'Checking the rendered movie and edit decisions'
 			});
 
-			const outputText =
-				result.output_text ||
-				(result.output || [])
-					.flatMap((item) => item.content || [])
-					.find((item) => item.type === 'output_text')?.text;
+			const outputText = responseOutputText(result);
 			if (!outputText) throw new Error('The editor did not return its edit decisions');
 			const edit = JSON.parse(outputText);
 			await appendAgentHistory(jobDirectory, { type: 'conversation_complete', step, edit });
@@ -391,6 +441,107 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 	} catch (err) {
 		await appendAgentHistory(jobDirectory, {
 			type: 'conversation_error',
+			message: err?.message || String(err),
+			stack: err?.stack
+		});
+		throw err;
+	}
+}
+
+export async function runEditorExportAgent(jobDirectory) {
+	const settings = getSettings();
+	const maxTurns = getMaxAgentTurns();
+	let previousResponseId = await getLastAgentResponseId(jobDirectory);
+	let input = [
+		{
+			role: 'user',
+			content:
+				'Create a complete editable project export of this exact rough cut for Adobe Premiere. Read ./premiere-xml-reference.md first; it contains the local authoring specification and validation checklist for the required XML format.'
+		}
+	];
+
+	await appendAgentHistory(jobDirectory, {
+		type: 'export_start',
+		model: settings.editorModel,
+		previousResponseId,
+		input
+	});
+
+	try {
+		for (let step = 0; step < maxTurns; step += 1) {
+			const result = await createAgentResponse(
+				settings,
+				movieEditorExportPrompt.trim(),
+				input,
+				jobDirectory,
+				step,
+				{
+					schema: exportSchema,
+					schemaName: 'premiere_export',
+					tools: [bashTool],
+					previousResponseId,
+					historyType: 'export_model'
+				}
+			);
+			previousResponseId = result.id;
+			const toolCalls = (result.output || []).filter((item) => item.type === 'function_call');
+
+			if (toolCalls.length) {
+				input = [];
+				for (const toolCall of toolCalls) {
+					const args = JSON.parse(toolCall.arguments);
+					await appendAgentHistory(jobDirectory, {
+						type: 'export_tool_call',
+						step,
+						toolCall,
+						arguments: args
+					});
+					const { result: toolResult, output } = await executeAgentTool(
+						toolCall,
+						args,
+						jobDirectory
+					);
+					await appendAgentHistory(jobDirectory, {
+						type: 'export_tool_result',
+						step,
+						callId: toolCall.call_id,
+						result: toolResult,
+						input: output
+					});
+					input.push(output);
+				}
+				continue;
+			}
+
+			try {
+				await stat(`${jobDirectory}/premiere-export.zip`);
+			} catch {
+				input = [
+					{
+						role: 'user',
+						content:
+							'The required ./premiere-export.zip does not exist yet. Use run_bash to create and validate it before finishing.'
+					}
+				];
+				continue;
+			}
+
+			const outputText = responseOutputText(result);
+			if (!outputText) throw new Error('The editor did not describe the project export');
+			const exported = JSON.parse(outputText);
+			await appendAgentHistory(jobDirectory, {
+				type: 'export_complete',
+				step,
+				responseId: previousResponseId,
+				exported
+			});
+			return exported;
+		}
+
+		throw new Error(`The export agent exceeded its maximum of ${maxTurns} model turns`);
+	} catch (err) {
+		await appendAgentHistory(jobDirectory, {
+			type: 'export_error',
 			message: err?.message || String(err),
 			stack: err?.stack
 		});
