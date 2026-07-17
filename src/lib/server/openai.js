@@ -11,6 +11,7 @@ import { updateJobStatus } from '$lib/server/job-status.js';
 import { getOrCreateTranscription } from '$lib/server/transcription-cache.js';
 import { createMovieEditorInput } from '$lib/server/movie-editor-context.js';
 import { transcriptionOptions } from '$lib/server/transcription-options.js';
+import { responseState } from '$lib/server/responses-api.js';
 
 function getMaxAgentTurns() {
 	const configuredTurns = Number.parseInt(process.env.EDITOR_MAX_TURNS || '', 10);
@@ -289,8 +290,7 @@ async function createAgentResponse(
 		tool_choice: 'auto',
 		parallel_tool_calls: false,
 		max_output_tokens: 16_000,
-		store: true,
-		...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
+		...responseState(settings.openRouter, previousResponseId),
 		text: {
 			format: {
 				type: 'json_schema',
@@ -338,7 +338,14 @@ async function createAgentResponse(
 		httpStatus: result.status,
 		data
 	});
-	if (!result.ok) throw new Error(data.error?.message || data.error || 'The agent failed');
+	if (!result.ok) {
+		const detail = data.metadata?.raw;
+		throw new Error(
+			[typeof data.error === 'string' ? data.error : data.error?.message, detail]
+				.filter(Boolean)
+				.join(': ') || 'The agent failed'
+		);
+	}
 	return data;
 }
 
@@ -451,12 +458,15 @@ export async function runEditingAgent(videos, vibe, targetMinutes, jobDirectory,
 export async function runEditorExportAgent(jobDirectory) {
 	const settings = getSettings();
 	const maxTurns = getMaxAgentTurns();
-	let previousResponseId = await getLastAgentResponseId(jobDirectory);
+	let previousResponseId = settings.openRouter
+		? undefined
+		: await getLastAgentResponseId(jobDirectory);
 	let input = [
 		{
 			role: 'user',
-			content:
-				'Create a complete editable project export of this exact rough cut for Adobe Premiere. Read ./premiere-xml-reference.md first; it contains the local authoring specification and validation checklist for the required XML format.'
+			content: settings.openRouter
+				? 'Create a complete editable project export of this exact rough cut for Adobe Premiere. Read ./agent-history.jsonl to recover the original editing conversation and Bash commands. Read ./premiere-xml-reference.md for the XML authoring specification and validation checklist.'
+				: 'Create a complete editable project export of this exact rough cut for Adobe Premiere. Read ./premiere-xml-reference.md first; it contains the local authoring specification and validation checklist for the required XML format.'
 		}
 	];
 
@@ -487,7 +497,9 @@ export async function runEditorExportAgent(jobDirectory) {
 			const toolCalls = (result.output || []).filter((item) => item.type === 'function_call');
 
 			if (toolCalls.length) {
-				input = [];
+				// OpenRouter requires the complete in-memory conversation on every stateless turn.
+				if (settings.openRouter) input.push(...(result.output || []));
+				else input = [];
 				for (const toolCall of toolCalls) {
 					const args = JSON.parse(toolCall.arguments);
 					await appendAgentHistory(jobDirectory, {
@@ -516,13 +528,14 @@ export async function runEditorExportAgent(jobDirectory) {
 			try {
 				await stat(`${jobDirectory}/premiere-export.zip`);
 			} catch {
-				input = [
-					{
-						role: 'user',
-						content:
-							'The required ./premiere-export.zip does not exist yet. Use run_bash to create and validate it before finishing.'
-					}
-				];
+				const reminder = {
+					role: 'user',
+					content:
+						'The required ./premiere-export.zip does not exist yet. Use run_bash to create and validate it before finishing.'
+				};
+				// Stateless providers need every preceding export turn again with the reminder.
+				if (settings.openRouter) input.push(...(result.output || []), reminder);
+				else input = [reminder];
 				continue;
 			}
 

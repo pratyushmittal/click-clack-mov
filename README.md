@@ -41,7 +41,7 @@ The Bash tool runs inside the current job directory, cannot access the network, 
 
 ## Editable project export
 
-The result screen offers both **Download movie** and **Export to Premiere**. The editor export uses Final Cut Pro 7 XML because Premiere can import this interchange format directly; modern `.fcpxml` is not used. The original editing response ID is retained in `agent-history.jsonl`, so the export request continues the same model conversation with its prior decisions and Bash commands instead of asking a fresh agent to reverse-engineer the MP4. Before that continuation starts, the server copies the self-contained authoring guide from `src/lib/server/references/final-cut-pro-7-xml.md` into the job as `premiere-xml-reference.md`; the follow-up user turn explicitly tells the agent to read it first.
+The result screen offers both **Download movie** and **Export to Premiere**. The editor export uses Final Cut Pro 7 XML because Premiere can import this interchange format directly; modern `.fcpxml` is not used. Direct OpenAI requests retain and continue the original response chain. OpenRouter's Responses API is stateless, so its export agent reads the saved `agent-history.jsonl` containing the prior messages, responses, and exact Bash commands instead of attempting an unsupported stored-response continuation. Before either export starts, the server copies the self-contained authoring guide from `src/lib/server/references/final-cut-pro-7-xml.md` into the job as `premiere-xml-reference.md`; the follow-up user turn explicitly tells the agent to read it first.
 
 The generated `click-clack-mov-premiere.zip` contains:
 

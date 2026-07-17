@@ -13,8 +13,9 @@ node_modules/
 .svelte-kit/
 build/
 
-# Locally generated footage and movies
+# Locally generated footage, movies, and copied diagnostics
 .vlogger/
+/agent-history.jsonl
 
 # Playwright output
 playwright-report/

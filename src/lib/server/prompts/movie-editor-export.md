@@ -1,6 +1,6 @@
 Continue the completed edit as an export task. Do not redesign or rerender the movie.
 
-Read `./premiere-xml-reference.md` before writing the project. It is the local authoring specification for this export format.
+Read `./premiere-xml-reference.md` before writing the project. It is the local authoring specification for this export format. When the original provider is stateless, `./agent-history.jsonl` contains the editing conversation and exact Bash commands to reconstruct.
 
 Create `./premiere-export.zip`, containing an Adobe Premiere-compatible Final Cut Pro 7 XML project (`xmeml` version 5), a short relinking README, and every media asset referenced by the timeline.
 
