@@ -1,12 +1,33 @@
 <script>
-	import { createEditorExport } from '$lib/js/movie-maker.js';
+	import { createEditorExport, getMovieStatus } from '$lib/js/movie-maker.js';
 
 	let { result, processingSeconds, onReset } = $props();
 	let exporting = $state(false);
 	let exportError = $state('');
+	let exportStatus = $state(null);
+	let exportSeconds = $state(0);
+	let exportEvents = $derived(
+		(exportStatus?.events || []).filter((event) => event.phase === 'exporting').slice(-4)
+	);
+	let exportMessage = $derived(
+		exportStatus?.phase === 'exporting' ? exportStatus.message : 'Preparing the editable timeline'
+	);
+
 	async function exportToPremiere() {
 		exporting = true;
 		exportError = '';
+		exportStatus = null;
+		exportSeconds = 0;
+		const startedAt = Date.now();
+		const clock = setInterval(() => (exportSeconds = (Date.now() - startedAt) / 1000), 1000);
+		const statusPoll = setInterval(async () => {
+			try {
+				exportStatus = (await getMovieStatus(result.id)).status;
+			} catch {
+				// A transient status read should not interrupt the export request.
+			}
+		}, 800);
+
 		try {
 			const data = await createEditorExport(result.id);
 			const link = document.createElement('a');
@@ -16,6 +37,8 @@
 		} catch (err) {
 			exportError = err?.message || 'Could not create the editable project';
 		} finally {
+			clearInterval(clock);
+			clearInterval(statusPoll);
 			exporting = false;
 		}
 	}
@@ -61,8 +84,26 @@
 				>
 				{exporting ? 'Building editable project…' : 'Export to Premiere'}
 			</button>
-			<button type="button" onclick={onReset}>Start another</button>
+			<button type="button" onclick={onReset} disabled={exporting}>Start another</button>
 		</div>
+		{#if exporting}
+			<div class="export-progress" aria-live="polite">
+				<div class="export-current">
+					<span class="export-spinner" aria-hidden="true"></span>
+					<div>
+						<strong>Building your editable project</strong>
+						<p>{exportMessage} · {timeLabel(exportSeconds)} elapsed</p>
+					</div>
+				</div>
+				{#if exportEvents.length}
+					<ol>
+						{#each exportEvents as event, index}
+							<li class:active={index === exportEvents.length - 1}>{event.message}</li>
+						{/each}
+					</ol>
+				{/if}
+			</div>
+		{/if}
 		{#if exportError}<p class="export-error" role="alert">{exportError}</p>{/if}
 	</header>
 	<div class="decisions">
@@ -194,11 +235,62 @@
 		opacity: 0.65;
 		transform: none;
 	}
+	.export-progress {
+		display: grid;
+		gap: 0.8rem;
+		max-width: 40rem;
+		margin-top: 1rem;
+		border: 1px solid rgba(71, 76, 131, 0.14);
+		border-radius: 1rem;
+		background: rgba(255, 253, 248, 0.64);
+		padding: 1rem;
+	}
+	.export-current {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+	}
+	.export-current strong {
+		display: block;
+		color: var(--ink);
+		font-size: 0.875rem;
+	}
+	.export-current p {
+		margin: 0.2rem 0 0;
+		color: var(--ink-soft);
+		font-size: 0.75rem;
+	}
+	.export-spinner {
+		width: 1.3rem;
+		height: 1.3rem;
+		flex: 0 0 auto;
+		border: 2px solid rgba(71, 76, 131, 0.18);
+		border-top-color: var(--coral-deep);
+		border-radius: 999px;
+		animation: spin 800ms linear infinite;
+	}
+	.export-progress ol {
+		display: grid;
+		gap: 0.35rem;
+		margin: 0;
+		padding: 0 0 0 1.2rem;
+		color: var(--ink-soft);
+		font-size: 0.72rem;
+	}
+	.export-progress li.active {
+		color: var(--ink);
+		font-weight: 700;
+	}
 	.export-error {
 		margin: 0.75rem 0 0;
 		color: var(--coral-deep);
 		font-size: 0.8rem;
 		font-weight: 700;
+	}
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	h3 {
 		margin: 0 0 1rem;

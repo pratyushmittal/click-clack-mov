@@ -470,6 +470,11 @@ export async function runEditorExportAgent(jobDirectory) {
 		}
 	];
 
+	await updateJobStatus(jobDirectory, {
+		phase: 'exporting',
+		message: 'Preparing the editable timeline'
+	});
+
 	await appendAgentHistory(jobDirectory, {
 		type: 'export_start',
 		model: settings.editorModel,
@@ -502,6 +507,11 @@ export async function runEditorExportAgent(jobDirectory) {
 				else input = [];
 				for (const toolCall of toolCalls) {
 					const args = JSON.parse(toolCall.arguments);
+					await updateJobStatus(jobDirectory, {
+						phase: 'exporting',
+						message: args.intent,
+						intent: true
+					});
 					await appendAgentHistory(jobDirectory, {
 						type: 'export_tool_call',
 						step,
@@ -548,11 +558,19 @@ export async function runEditorExportAgent(jobDirectory) {
 				responseId: previousResponseId,
 				exported
 			});
+			await updateJobStatus(jobDirectory, {
+				phase: 'complete',
+				message: 'Your editable project is ready'
+			});
 			return exported;
 		}
 
 		throw new Error(`The export agent exceeded its maximum of ${maxTurns} model turns`);
 	} catch (err) {
+		await updateJobStatus(jobDirectory, {
+			phase: 'complete',
+			message: 'Your first cut is ready'
+		});
 		await appendAgentHistory(jobDirectory, {
 			type: 'export_error',
 			message: err?.message || String(err),

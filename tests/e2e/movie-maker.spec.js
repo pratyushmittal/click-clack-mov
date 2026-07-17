@@ -102,6 +102,21 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	});
 	await page.route('**/api/jobs/test-job/editor-export', async (route) => {
 		if (route.request().method() === 'POST') {
+			status = {
+				...status,
+				phase: 'exporting',
+				message: 'Mapping the source clips into editable tracks',
+				events: [
+					...(status.events || []),
+					{
+						phase: 'exporting',
+						message: 'Mapping the source clips into editable tracks',
+						createdAt: '2026-07-17T00:00:00Z'
+					}
+				]
+			};
+			await new Promise((resolve) => setTimeout(resolve, 1600));
+			status = { ...status, phase: 'complete', message: 'Your editable project is ready' };
 			await route.fulfill({
 				json: {
 					success: true,
@@ -203,6 +218,14 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 
 	const downloadPromise = page.waitForEvent('download');
 	await page.getByRole('button', { name: 'Export to Premiere' }).click();
+	await expect(page.getByText('Building your editable project')).toBeVisible();
+	await expect(page.getByText('Mapping the source clips into editable tracks').first()).toBeVisible(
+		{
+			timeout: 3000
+		}
+	);
+	await expect(page.getByText(/elapsed/).last()).toBeVisible();
 	const download = await downloadPromise;
 	expect(download.suggestedFilename()).toBe('click-clack-mov-premiere.zip');
+	await expect(page.getByText('Building your editable project')).toHaveCount(0);
 });

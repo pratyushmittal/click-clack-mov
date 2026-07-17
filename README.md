@@ -49,7 +49,7 @@ The generated `click-clack-mov-premiere.zip` contains:
 - every source, music, sound-effect, and generated graphic referenced by that timeline;
 - a README with relinking notes and any FFmpeg-only effect that needed a closest editable equivalent.
 
-The XML points to the original local job paths so Premiere on the same Mac can usually link immediately. The packaged media makes the project portable when those paths are unavailable. Cross-editor interchange cannot represent every FFmpeg filter exactly, so the export favors editable layers and documents approximations instead of flattening the project. Completed ZIPs are cached in their job directory, so another click downloads the existing export without another model run.
+The XML points to the original local job paths so Premiere on the same Mac can usually link immediately. The packaged media makes the project portable when those paths are unavailable. Cross-editor interchange cannot represent every FFmpeg filter exactly, so the export favors editable layers and documents approximations instead of flattening the project. While the export agent works, the result screen polls the existing job status and shows its current Bash intent, recent export steps, and elapsed time. Completed ZIPs are cached in their job directory, so another click downloads the existing export without another model run.
 
 ## Requirements
 
