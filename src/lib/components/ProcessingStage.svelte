@@ -12,10 +12,10 @@
 		'Checking if that cut actually slaps'
 	];
 	const slideshowFilters = [
-		'grayscale(1) contrast(1.2)',
 		'invert(1) grayscale(1) contrast(1.1)',
-		'sepia(0.85) saturate(1.4) contrast(1.05)',
-		'hue-rotate(180deg) saturate(1.8) contrast(1.08)'
+		'hue-rotate(180deg) saturate(1.8) contrast(1.08)',
+		'grayscale(1) contrast(1.2)',
+		'sepia(0.85) saturate(1.4) contrast(1.05)'
 	];
 
 	let { files, status, message, startedAt } = $props();
