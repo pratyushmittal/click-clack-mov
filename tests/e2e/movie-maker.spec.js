@@ -147,13 +147,14 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	const firstElapsed = await elapsed.textContent();
 	await page.waitForTimeout(1100);
 	await expect.poll(() => elapsed.textContent()).not.toBe(firstElapsed);
-	const preview = page.getByLabel('Preview of clip-a.mp4');
+	const preview = page.getByLabel(/Preview of clip-/);
 	await expect(preview).toBeVisible();
-	const firstTime = await preview.evaluate((video) => video.currentTime);
-	await page.waitForTimeout(1400);
+	const firstPreview = await preview.getAttribute('aria-label');
+	const firstFilter = await preview.evaluate((video) => getComputedStyle(video).filter);
+	expect(firstFilter).not.toBe('none');
 	await expect
-		.poll(() => preview.evaluate((video) => video.currentTime))
-		.toBeGreaterThan(firstTime + 1);
+		.poll(() => preview.getAttribute('aria-label'), { timeout: 5000 })
+		.not.toBe(firstPreview);
 
 	status = {
 		phase: 'editing',
@@ -168,24 +169,10 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 		]
 	};
 
-	const sheet = page.getByRole('img', { name: /Timestamped contact sheet/ });
-	await expect(sheet).toBeVisible({ timeout: 3000 });
-	const firstSheet = await sheet.getAttribute('src');
-	await expect.poll(() => sheet.getAttribute('src'), { timeout: 5000 }).not.toBe(firstSheet);
-
-	const editingPreview = page.getByLabel(/Preview of clip-/);
-	await expect(editingPreview).toBeVisible({ timeout: 5000 });
-	const firstPreview = await editingPreview.getAttribute('aria-label');
-	const firstFilter = await editingPreview.evaluate((video) => getComputedStyle(video).filter);
-	expect(firstFilter).not.toBe('none');
+	await expect(page.getByRole('img', { name: /Timestamped contact sheet/ })).toHaveCount(0);
+	await expect.poll(() => preview.getAttribute('aria-label'), { timeout: 5000 }).toBe(firstPreview);
 	await expect
-		.poll(() => editingPreview.getAttribute('aria-label'), { timeout: 5000 })
-		.not.toBe(firstPreview);
-	await expect
-		.poll(() => editingPreview.getAttribute('aria-label'), { timeout: 5000 })
-		.toBe(firstPreview);
-	await expect
-		.poll(() => editingPreview.evaluate((video) => getComputedStyle(video).filter), {
+		.poll(() => preview.evaluate((video) => getComputedStyle(video).filter), {
 			timeout: 5000
 		})
 		.not.toBe(firstFilter);

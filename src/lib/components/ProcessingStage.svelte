@@ -21,12 +21,9 @@
 	let { files, status, message, startedAt } = $props();
 	let video = $state();
 	let videoUrl = $state('');
-	let mediaIndex = $state(0);
 	let slideshowOrder = $state([]);
 	let slideshowPosition = $state(0);
 	let slideshowPass = $state(0);
-	let showingContactSheets = $state(false);
-	let previousPhase = $state('');
 	let latestToolEvent = $state('');
 	let toolTitleIndex = $state(0);
 	let now = $state(Date.now());
@@ -34,39 +31,18 @@
 	let processingVideos = $derived(
 		Object.values(status.processingVideos || {}).sort((left, right) => left.index - right.index)
 	);
-	let contactSheets = $derived(
-		Object.entries(status.contactSheets || {}).sort(
-			([left], [right]) => Number(left) - Number(right)
-		)
-	);
 	let editing = $derived(status.phase === 'editing' || status.phase === 'finalizing');
-	let processingVideo = $derived(
-		processingVideos.length ? processingVideos[mediaIndex % processingVideos.length] : null
-	);
-	let mediaFileIndex = $derived(
-		editing
-			? showingContactSheets && contactSheets.length
-				? Number(contactSheets[mediaIndex % contactSheets.length][0])
-				: (slideshowOrder[slideshowPosition] ?? 0)
-			: (processingVideo?.index ?? 0)
-	);
+	let processingVideo = $derived(processingVideos[0] || null);
+	let processingFile = $derived(files[processingVideo?.index]?.file);
+	let mediaFileIndex = $derived(slideshowOrder[slideshowPosition] ?? 0);
 	let mediaFile = $derived(files[mediaFileIndex]?.file);
-	let contactSheetUrl = $derived(
-		editing && showingContactSheets && contactSheets.length
-			? contactSheets[mediaIndex % contactSheets.length][1]
-			: ''
-	);
 	let newestEvent = $derived(status.events?.at(-1));
-	let previewFilter = $derived(
-		editing ? slideshowFilters[slideshowPass % slideshowFilters.length] : 'none'
-	);
+	let previewFilter = $derived(slideshowFilters[slideshowPass % slideshowFilters.length]);
 	let title = $derived.by(() => {
 		if (status.phase === 'finalizing') return 'Finishing your movie';
 		if (editing) {
 			if (newestEvent) return toolTitles[toolTitleIndex];
-			return showingContactSheets
-				? 'Reviewing every camera roll'
-				: 'Finding the shape of your story';
+			return 'Finding the shape of your story';
 		}
 		if (!processingVideo) return 'Preparing your footage';
 		if (!processingVideo.transcriptReady) return 'Generating the transcript';
@@ -78,26 +54,17 @@
 		`${
 			editing || !processingVideo
 				? message
-				: `Analyzing video ${processingVideo.index + 1} of ${files.length}: ${mediaFile.name}`
+				: `Analyzing video ${processingVideo.index + 1} of ${files.length}: ${processingFile.name}`
 		} · ${timeLabel(elapsed)} elapsed`
 	);
 
 	$effect(() => {
-		if (status.phase === previousPhase) return;
-		previousPhase = status.phase;
-
-		if (status.phase === 'editing') {
-			mediaIndex = 0;
-			showingContactSheets = contactSheets.length > 0;
-			slideshowOrder = Array.from({ length: files.length }, (_, index) => index).sort(
-				() => Math.random() - 0.5
-			);
-			slideshowPosition = 0;
-			slideshowPass = 0;
-		} else if (!editing) {
-			mediaIndex = 0;
-			showingContactSheets = false;
-		}
+		const fileCount = files.length;
+		// Files are fixed for this processing run, so build the slideshow only once.
+		if (!fileCount || slideshowOrder.length) return;
+		slideshowOrder = Array.from({ length: fileCount }, (_, index) => index).sort(
+			() => Math.random() - 0.5
+		);
 	});
 
 	$effect(() => {
@@ -119,15 +86,6 @@
 	}
 
 	function advanceSlideshow() {
-		// Analysis keeps one source playing continuously; only editing uses the slideshow.
-		if (!editing) return;
-
-		if (showingContactSheets) {
-			if (mediaIndex + 1 < contactSheets.length) mediaIndex += 1;
-			else showingContactSheets = false;
-			return;
-		}
-
 		const lastPosition = slideshowOrder.length - 1;
 		if (slideshowPosition < lastPosition) {
 			slideshowPosition += 1;
@@ -157,7 +115,7 @@
 
 	$effect(() => {
 		const file = mediaFile;
-		if (!file || contactSheetUrl) {
+		if (!file) {
 			videoUrl = '';
 			return;
 		}
@@ -168,27 +126,21 @@
 
 	function playPreview() {
 		if (!video) return;
-		video.playbackRate = editing ? 1.5 : 2;
-		if (editing && video.duration)
-			video.currentTime = Math.random() * Math.max(0, video.duration - 8);
+		video.playbackRate = 1.5;
+		if (video.duration) video.currentTime = Math.random() * Math.max(0, video.duration - 8);
 		video.play().catch(() => {});
 	}
 </script>
 
 <section class="processing-stage">
 	<div class="media">
-		{#if contactSheetUrl}
-			<img
-				src={contactSheetUrl}
-				alt={`Timestamped contact sheet for ${mediaFile?.name || 'video'}`}
-			/>
-		{:else if videoUrl}
+		{#if videoUrl}
 			<video
 				bind:this={video}
 				src={videoUrl}
 				muted
 				playsinline
-				loop={editing && files.length === 1}
+				loop={files.length === 1}
 				style:filter={previewFilter}
 				onloadedmetadata={playPreview}
 				aria-label={`Preview of ${mediaFile.name}`}
@@ -220,8 +172,7 @@
 		overflow: hidden;
 		background: linear-gradient(145deg, var(--lavender), #eadff0);
 	}
-	.media video,
-	.media img {
+	.media video {
 		width: 100%;
 		height: 100%;
 		min-height: 24rem;
@@ -295,8 +246,7 @@
 	}
 	@media (max-width: 600px) {
 		.media,
-		.media video,
-		.media img {
+		.media video {
 			min-height: 17rem;
 		}
 		.copy {
