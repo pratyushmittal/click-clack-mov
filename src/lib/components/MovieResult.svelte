@@ -5,6 +5,7 @@
 	let exporting = $state(false);
 	let exportError = $state('');
 	let exportStatus = $state(null);
+	let exportDownloadUrl = $state('');
 	let exportSeconds = $state(0);
 	let exportEvents = $derived(
 		(exportStatus?.events || []).filter((event) => event.phase === 'exporting').slice(-4)
@@ -17,6 +18,7 @@
 		exporting = true;
 		exportError = '';
 		exportStatus = null;
+		exportDownloadUrl = '';
 		exportSeconds = 0;
 		const startedAt = Date.now();
 		const clock = setInterval(() => (exportSeconds = (Date.now() - startedAt) / 1000), 1000);
@@ -30,10 +32,9 @@
 
 		try {
 			const data = await createEditorExport(result.id);
-			const link = document.createElement('a');
-			link.href = data.downloadUrl;
-			link.download = 'click-clack-mov-premiere.zip';
-			link.click();
+			exportDownloadUrl = data.downloadUrl;
+			// A delayed synthetic click can be blocked after browser user activation expires.
+			window.location.assign(data.downloadUrl);
 		} catch (err) {
 			exportError = err?.message || 'Could not create the editable project';
 		} finally {
@@ -102,6 +103,17 @@
 						{/each}
 					</ol>
 				{/if}
+			</div>
+		{/if}
+		{#if exportDownloadUrl}
+			<div class="export-ready" role="status">
+				<div>
+					<strong>Editable project ready</strong>
+					<p>If the download did not start automatically, download the completed package here.</p>
+				</div>
+				<a href={exportDownloadUrl} download="click-clack-mov-premiere.zip"
+					>Download editor project</a
+				>
 			</div>
 		{/if}
 		{#if exportError}<p class="export-error" role="alert">{exportError}</p>{/if}
@@ -281,6 +293,37 @@
 		color: var(--ink);
 		font-weight: 700;
 	}
+	.export-ready {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		max-width: 40rem;
+		margin-top: 1rem;
+		border: 1px solid rgba(71, 76, 131, 0.14);
+		border-radius: 1rem;
+		background: rgba(255, 253, 248, 0.72);
+		padding: 1rem;
+	}
+	.export-ready strong {
+		color: var(--ink);
+		font-size: 0.875rem;
+	}
+	.export-ready p {
+		margin: 0.2rem 0 0;
+		color: var(--ink-soft);
+		font-size: 0.75rem;
+	}
+	.export-ready a {
+		flex: 0 0 auto;
+		border-radius: 0.8rem;
+		background: var(--ink);
+		padding: 0.7rem 0.9rem;
+		color: var(--white);
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
 	.export-error {
 		margin: 0.75rem 0 0;
 		color: var(--coral-deep);
@@ -349,8 +392,12 @@
 		font-weight: 700;
 	}
 	@media (max-width: 600px) {
-		.result-heading {
+		.result-heading,
+		.export-ready {
 			display: grid;
+		}
+		.export-ready a {
+			justify-self: start;
 		}
 		.result-heading > span {
 			justify-self: start;

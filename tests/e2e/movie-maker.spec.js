@@ -228,4 +228,8 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	const download = await downloadPromise;
 	expect(download.suggestedFilename()).toBe('click-clack-mov-premiere.zip');
 	await expect(page.getByText('Building your editable project')).toHaveCount(0);
+	await expect(page.getByRole('link', { name: 'Download editor project' })).toHaveAttribute(
+		'href',
+		'/api/jobs/test-job/editor-export'
+	);
 });
