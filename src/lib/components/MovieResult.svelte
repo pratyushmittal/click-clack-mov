@@ -1,5 +1,6 @@
 <script>
 	import { createEditorExport, getMovieStatus } from '$lib/js/movie-maker.js';
+	import { timeLabel } from '$lib/utils/time.js';
 
 	let { result, processingSeconds, onReset } = $props();
 	let exporting = $state(false);
@@ -42,16 +43,6 @@
 			clearInterval(statusPoll);
 			exporting = false;
 		}
-	}
-
-	function timeLabel(seconds) {
-		const total = Math.round(seconds);
-		const hours = Math.floor(total / 3600);
-		const minutes = Math.floor((total % 3600) / 60);
-		const remainingSeconds = total % 60;
-		return hours
-			? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
-			: `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 	}
 </script>
 

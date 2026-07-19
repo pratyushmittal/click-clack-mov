@@ -234,8 +234,6 @@ export async function downloadAgentSound(
 		const existing = manifest.find((item) => item.sourceId === candidate.id);
 		if (existing) return existing;
 	}
-	if (manifest.length >= maxDownloads)
-		throw new Error('This edit already has three downloaded sounds');
 
 	for (const candidate of candidates) {
 		const cached = await useCachedSound(candidate, jobDirectory, cacheDirectory, manifest);
