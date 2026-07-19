@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdir, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import sharp from 'sharp';
@@ -176,8 +176,4 @@ export async function extractAudioChunks(filePath, outputDirectory) {
 		offset += await getDuration(chunkPath);
 	}
 	return chunks;
-}
-
-export async function imageDataUrl(filePath) {
-	return `data:image/jpeg;base64,${(await readFile(filePath)).toString('base64')}`;
 }

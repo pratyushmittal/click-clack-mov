@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { timeLabel } from '$lib/utils/time.js';
 
 	const toolTitles = [
 		'Turning chaos into cinema',
@@ -75,15 +76,6 @@
 			(toolTitleIndex + 1 + Math.floor(Math.random() * (toolTitles.length - 1))) %
 			toolTitles.length;
 	});
-
-	function timeLabel(seconds) {
-		const hours = Math.floor(seconds / 3600);
-		const minutes = Math.floor((seconds % 3600) / 60);
-		const remainingSeconds = seconds % 60;
-		return hours
-			? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
-			: `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
-	}
 
 	function advanceSlideshow() {
 		const lastPosition = slideshowOrder.length - 1;
@@ -177,11 +169,8 @@
 		height: 100%;
 		min-height: 24rem;
 		max-height: 36rem;
-		object-fit: contain;
-		background: var(--ink);
-	}
-	.media video {
 		object-fit: cover;
+		background: var(--ink);
 		transition: filter 500ms ease;
 	}
 	.copy {

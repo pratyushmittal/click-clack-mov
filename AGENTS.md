@@ -116,11 +116,14 @@ export async function POST({ request }) {
 - **logger.js:** `createLogger` → `logger.debug/info/warn/error` (`debug` gated by `DEBUG=true`)
 - **transcription-cache.js:** content-addressed transcript cache under `.vlogger/cache/transcriptions/`; keyed by source SHA-256, model, and cache version; deduplicates concurrent identical files.
 - **contact-sheet-cache.js:** content-addressed camera-roll cache under `.vlogger/cache/contact-sheets/`; keyed by source SHA-256 and cache version; APFS-clones results into jobs and deduplicates concurrent identical files.
+- **import-preprocessor.js:** starts transcript and camera-roll work as soon as files are imported; the movie pipeline waits for matching in-flight work and then reuses the shared caches.
 - **font-library.js:** APFS-clones the curated `fonts/` display typefaces into each editing job so FFmpeg can use them inside the sandbox.
 - **music-library.js:** APFS-clones the curated `sounds/` tracks and precomputed `sounds-analysis/` beat maps into each editing job. Regenerate analysis with `npm run analyze:music`.
 - **movie-editor-context.js:** builds a compact developer file index; the agent reads transcripts with Bash and contact sheets with `load_images`, while the user message remains exactly the submitted vibe.
 - **agent-sound.js:** downloads up to three short CC0 sound effects from Openverse, validates them with FFprobe, caches them by content, and records provenance per job.
 - **editor-export.js:** copies the local FCP7 XML authoring reference into the job, resumes the edit from stored OpenAI state or OpenRouter history, and caches a portable Adobe Premiere-compatible project ZIP.
+- **active-work.js:** reference-counts active imports, preprocessing, edits, and exports so storage cleanup cannot remove work in progress.
+- **storage-cleanup.js:** measures and clears disposable job, import, preprocessing, and legacy upload files while preserving caches, current work, and each job's `agent-history.jsonl`.
 - _Add domain-specific server helpers here (AI clients, storage, scrapers). Keep all credential handling and third-party SDK calls server-only._
 
 ### Standards

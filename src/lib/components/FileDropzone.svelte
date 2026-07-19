@@ -1,4 +1,6 @@
 <script>
+	import { timeLabel } from '$lib/utils/time.js';
+
 	let { files, onAdd, onRemove } = $props();
 	let input;
 	let dragging = $state(false);
@@ -20,13 +22,7 @@
 	}
 
 	function durationLabel(seconds) {
-		if (!Number.isFinite(seconds)) return 'Reading duration…';
-		const hours = Math.floor(seconds / 3600);
-		const minutes = Math.floor((seconds % 3600) / 60);
-		const remainingSeconds = Math.floor(seconds % 60);
-		return hours
-			? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
-			: `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+		return Number.isFinite(seconds) ? timeLabel(seconds) : 'Reading duration…';
 	}
 </script>
 

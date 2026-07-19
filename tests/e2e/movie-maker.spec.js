@@ -7,6 +7,31 @@ const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const videos = [path.join(fixtures, 'clip-a.mp4'), path.join(fixtures, 'clip-b.mp4')];
 const contactSheet = path.join(fixtures, 'contact-sheet.jpg');
 
+async function mockFilePreparation(page, onPreprocess = () => {}, preprocessError = '') {
+	await page.route('**/api/imports/**', async (route) => {
+		const fileName = new URL(route.request().url()).searchParams.get('fileName');
+		await route.fulfill({
+			json: {
+				success: true,
+				file: {
+					originalName: fileName,
+					storedName: `${crypto.randomUUID()}-${fileName}`,
+					size: 0,
+					sha256: 'a'.repeat(64)
+				}
+			}
+		});
+	});
+	await page.route('**/api/preprocess', async (route) => {
+		onPreprocess(route.request().postDataJSON());
+		await route.fulfill(
+			preprocessError
+				? { status: 500, json: { error: preprocessError } }
+				: { json: { success: true, started: true } }
+		);
+	});
+}
+
 test('shows the Click Clack Mov identity', async ({ page }) => {
 	await page.goto('/');
 	await expect(page).toHaveTitle('Click Clack Mov — Little moments, cut together');
@@ -22,6 +47,8 @@ async function addVideos(page) {
 }
 
 test('accepts more than twelve source videos', async ({ page }) => {
+	let prepared = 0;
+	await mockFilePreparation(page, () => (prepared += 1));
 	const bytes = await readFile(videos[0]);
 	await page.goto('/');
 	await page.waitForLoadState('networkidle');
@@ -34,9 +61,11 @@ test('accepts more than twelve source videos', async ({ page }) => {
 	);
 
 	await expect(page.getByRole('button', { name: /^Remove clip-/ })).toHaveCount(13);
+	await expect.poll(() => prepared).toBe(13);
 });
 
 test('reads local video metadata and suggests a 25% target', async ({ page }) => {
+	await mockFilePreparation(page);
 	await page.goto('/');
 	await page.waitForLoadState('networkidle');
 	await page.getByRole('button', { name: 'Make my movie' }).click();
@@ -46,6 +75,26 @@ test('reads local video metadata and suggests a 25% target', async ({ page }) =>
 	await expect
 		.poll(async () => Number(await page.getByLabel('Target output duration').inputValue()))
 		.toBeCloseTo(4 / 60, 2);
+});
+
+test('uses the normal pipeline when early preprocessing cannot start', async ({ page }) => {
+	let requestData;
+	await mockFilePreparation(page, () => {}, 'Early preprocessing unavailable');
+	await page.route('**/api/create-movie', async (route) => {
+		requestData = route.request().postDataJSON();
+		await route.fulfill({ status: 500, json: { error: 'Stopped after submission' } });
+	});
+
+	await page.goto('/');
+	await addVideos(page);
+	await expect
+		.poll(async () => Number(await page.getByLabel('Target output duration').inputValue()))
+		.toBeCloseTo(4 / 60, 2);
+	await page.getByLabel('Vibe').fill('Warm and playful');
+	await page.getByRole('button', { name: 'Make my movie' }).click();
+
+	await expect.poll(() => requestData?.files.length).toBe(2);
+	await expect(page.getByRole('alert')).toContainText('Stopped after submission');
 });
 
 test('fills vibe and target time from presets', async ({ page }) => {
@@ -79,15 +128,8 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	let finishMovie;
 	const movieResult = new Promise((resolve) => (finishMovie = resolve));
 
-	await page.route('**/api/imports/**', async (route) => {
-		const fileName = new URL(route.request().url()).searchParams.get('fileName');
-		await route.fulfill({
-			json: {
-				success: true,
-				file: { originalName: fileName, storedName: `${crypto.randomUUID()}-${fileName}` }
-			}
-		});
-	});
+	let prepared = 0;
+	await mockFilePreparation(page, () => (prepared += 1));
 	await page.route('**/api/jobs/*/status', (route) =>
 		route.fulfill({ json: { success: true, status } })
 	);
@@ -96,6 +138,7 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	);
 	await page.route('**/api/create-movie', async (route) => {
 		const data = route.request().postDataJSON();
+		expect(data.importId).toMatch(/^[a-f0-9-]{36}$/);
 		expect(data.files).toHaveLength(2);
 		expect(data.targetMinutes).toBeCloseTo(4 / 60, 2);
 		await route.fulfill({ json: { success: true, result: await movieResult } });
@@ -138,6 +181,7 @@ test('keeps previews moving through analysis, editing, and completion', async ({
 	await page.goto('/');
 	await page.waitForLoadState('networkidle');
 	await addVideos(page);
+	await expect.poll(() => prepared).toBe(2);
 	await page.getByLabel('Vibe').fill('Warm and playful');
 	await page.getByRole('button', { name: 'Make my movie' }).click();
 
