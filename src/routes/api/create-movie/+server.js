@@ -1,6 +1,7 @@
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import { trackActiveWork } from '$lib/server/active-work.js';
 import { apiError, apiSuccess, validationError } from '$lib/server/api-response.js';
 import { createLogger } from '$lib/server/logger.js';
 import { waitForImportPreprocessing } from '$lib/server/import-preprocessor.js';
@@ -25,11 +26,13 @@ export async function POST({ request }) {
 		const validation = requestSchema.safeParse(data);
 		if (!validation.success) return validationError(validation.error);
 
-		const result = await createMovie(
-			validation.data.importId,
-			validation.data.files,
-			validation.data.vibe,
-			validation.data.targetMinutes
+		const result = await trackActiveWork(validation.data.importId, () =>
+			createMovie(
+				validation.data.importId,
+				validation.data.files,
+				validation.data.vibe,
+				validation.data.targetMinutes
+			)
 		);
 		// Active speculative work keeps its source until it finishes, without delaying the movie response.
 		void waitForImportPreprocessing(validation.data.importId)

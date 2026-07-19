@@ -2,6 +2,7 @@
 	import FileDropzone from '$lib/components/FileDropzone.svelte';
 	import MovieResult from '$lib/components/MovieResult.svelte';
 	import ProcessingStage from '$lib/components/ProcessingStage.svelte';
+	import StorageCleanup from '$lib/components/StorageCleanup.svelte';
 	import {
 		createMovie,
 		getMovieStatus,
@@ -223,6 +224,7 @@
 				<p>Click Clack</p>
 				<strong>Mov</strong>
 			</div>
+			<StorageCleanup keepIds={[importId, activeJobId, result?.id].filter(Boolean)} />
 			<span>Little moments,<br />cut together.</span>
 		</div>
 		{#if result}

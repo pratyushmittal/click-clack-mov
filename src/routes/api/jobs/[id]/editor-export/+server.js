@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
+import { trackActiveWork } from '$lib/server/active-work.js';
 import { apiError, apiSuccess } from '$lib/server/api-response.js';
 import { getEditorExportPath, getOrCreateEditorExport } from '$lib/server/editor-export.js';
 import { createLogger } from '$lib/server/logger.js';
@@ -16,7 +17,7 @@ export async function POST({ params }) {
 	if (!validJobId(params.id)) return apiError('Movie not found', 404);
 
 	try {
-		await getOrCreateEditorExport(params.id);
+		await trackActiveWork(params.id, () => getOrCreateEditorExport(params.id));
 		return apiSuccess({ downloadUrl: `/api/jobs/${params.id}/editor-export` });
 	} catch (err) {
 		logger.error('Failed to create editor export', err?.message || err);

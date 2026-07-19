@@ -4,6 +4,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
+import { trackActiveWork } from '$lib/server/active-work.js';
 import { importIdSchema, importsRoot } from '$lib/server/imported-file.js';
 import { apiError, apiSuccess } from '$lib/server/api-response.js';
 import { createLogger } from '$lib/server/logger.js';
@@ -15,41 +16,44 @@ function safeFileName(fileName) {
 }
 
 export async function POST({ params, request, url }) {
-	let filePath;
+	if (!importIdSchema.safeParse(params.id).success) return apiError('Invalid import ID', 400);
 
-	try {
-		if (!importIdSchema.safeParse(params.id).success) return apiError('Invalid import ID', 400);
-		if (!request.body) return apiError('The selected video was empty', 400);
+	return trackActiveWork(params.id, async () => {
+		let filePath;
 
-		const fileName = url.searchParams.get('fileName') || 'video';
-		const fileSize = Number(request.headers.get('content-length'));
-		const storedName = `${randomUUID()}-${safeFileName(fileName)}`;
-		const importDirectory = path.join(importsRoot, params.id);
-		filePath = path.join(importDirectory, storedName);
-		await mkdir(importDirectory, { recursive: true });
+		try {
+			if (!request.body) return apiError('The selected video was empty', 400);
 
-		const hash = createHash('sha256');
-		const hashStream = new Transform({
-			transform(chunk, encoding, callback) {
-				// Hash while importing so cache lookup never needs a second full file read.
-				hash.update(chunk);
-				callback(null, chunk);
-			}
-		});
+			const fileName = url.searchParams.get('fileName') || 'video';
+			const fileSize = Number(request.headers.get('content-length'));
+			const storedName = `${randomUUID()}-${safeFileName(fileName)}`;
+			const importDirectory = path.join(importsRoot, params.id);
+			filePath = path.join(importDirectory, storedName);
+			await mkdir(importDirectory, { recursive: true });
 
-		// Browser files have no readable local path, so stream their bytes to the local job area.
-		await pipeline(Readable.fromWeb(request.body), hashStream, createWriteStream(filePath));
-		return apiSuccess({
-			file: {
-				storedName,
-				originalName: fileName,
-				size: fileSize || 0,
-				sha256: hash.digest('hex')
-			}
-		});
-	} catch (err) {
-		if (filePath) await rm(filePath, { force: true });
-		logger.error('Failed to import video', err?.message || err);
-		return apiError(err?.message || 'Could not import the video', 500);
-	}
+			const hash = createHash('sha256');
+			const hashStream = new Transform({
+				transform(chunk, encoding, callback) {
+					// Hash while importing so cache lookup never needs a second full file read.
+					hash.update(chunk);
+					callback(null, chunk);
+				}
+			});
+
+			// Browser files have no readable local path, so stream their bytes to the local job area.
+			await pipeline(Readable.fromWeb(request.body), hashStream, createWriteStream(filePath));
+			return apiSuccess({
+				file: {
+					storedName,
+					originalName: fileName,
+					size: fileSize || 0,
+					sha256: hash.digest('hex')
+				}
+			});
+		} catch (err) {
+			if (filePath) await rm(filePath, { force: true });
+			logger.error('Failed to import video', err?.message || err);
+			return apiError(err?.message || 'Could not import the video', 500);
+		}
+	});
 }

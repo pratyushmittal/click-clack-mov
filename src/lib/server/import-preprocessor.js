@@ -1,5 +1,6 @@
 import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { trackActiveWork } from '$lib/server/active-work.js';
 import { createContactSheet, extractAudioChunks, getDuration } from '$lib/server/media.js';
 import { transcribeVideo } from '$lib/server/openai.js';
 import { getOrCreateContactSheet } from '$lib/server/contact-sheet-cache.js';
@@ -63,9 +64,13 @@ export function startImportedPreprocessing(importId, file) {
 	// Repeated start requests should share the same queued or active work.
 	if (current) return current;
 
-	const task = new Promise((resolve, reject) => {
-		queue.push({ importId, file, resolve, reject });
-	}).finally(() => tasks.delete(key));
+	const task = trackActiveWork(
+		importId,
+		() =>
+			new Promise((resolve, reject) => {
+				queue.push({ importId, file, resolve, reject });
+			})
+	).finally(() => tasks.delete(key));
 	tasks.set(key, task);
 	runQueue();
 	void task.catch((err) =>
