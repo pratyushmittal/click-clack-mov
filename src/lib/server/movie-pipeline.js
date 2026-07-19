@@ -1,4 +1,5 @@
-import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { copyFile, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createContactSheet, extractAudioChunks, getDuration } from '$lib/server/media.js';
 import { runEditingAgent, transcribeVideo } from '$lib/server/openai.js';
@@ -7,10 +8,14 @@ import { updateJobStatus } from '$lib/server/job-status.js';
 import { prepareMusicLibrary } from '$lib/server/music-library.js';
 import { getOrCreateContactSheet } from '$lib/server/contact-sheet-cache.js';
 import { prepareFontLibrary } from '$lib/server/font-library.js';
+import { importedFilePath } from '$lib/server/imported-file.js';
+import {
+	discardUnusedImportedPreprocessing,
+	waitForImportedPreprocessing
+} from '$lib/server/import-preprocessor.js';
 
 const logger = createLogger('MoviePipeline');
 const jobsRoot = path.resolve('.vlogger/jobs');
-const importsRoot = path.resolve('.vlogger/imports');
 
 function safeFileName(fileName) {
 	return fileName.replace(/[^a-zA-Z0-9._-]/g, '-');
@@ -29,11 +34,12 @@ function normalizeClips(clips, videos) {
 }
 
 async function processVideo(file, index, files, importId, jobDirectory, sourceDirectory) {
+	await waitForImportedPreprocessing(importId, file);
 	const filePath = path.join(
 		sourceDirectory,
 		`${String(index).padStart(2, '0')}-${safeFileName(file.originalName)}`
 	);
-	await rename(path.join(importsRoot, importId, file.storedName), filePath);
+	await copyFile(importedFilePath(importId, file.storedName), filePath, constants.COPYFILE_FICLONE);
 	const duration = await getDuration(filePath);
 	const contactSheet = path.join(jobDirectory, `contact-sheet-${index}.jpg`);
 	const audioDirectory = path.join(jobDirectory, `audio-${index}`);
@@ -109,14 +115,23 @@ async function processVideos(files, concurrency, work) {
 		}
 	}
 
-	await Promise.all(Array.from({ length: Math.min(concurrency, files.length) }, processNext));
+	const workers = await Promise.allSettled(
+		Array.from({ length: Math.min(concurrency, files.length) }, processNext)
+	);
+	const failed = workers.find((worker) => worker.status === 'rejected');
+	// Let every worker stop before a failed job becomes available for retry.
+	if (failed) throw failed.reason;
 	return results;
 }
 
 export async function createMovie(importId, files, vibe, targetMinutes) {
-	const id = importId;
-	const jobDirectory = path.join(jobsRoot, id);
+	const jobDirectory = path.join(jobsRoot, importId);
+	discardUnusedImportedPreprocessing(importId, files);
 	const sourceDirectory = path.join(jobDirectory, 'sources');
+	// Verify retry inputs before removing a previous job that may still contain a usable movie.
+	await Promise.all(files.map((file) => stat(importedFilePath(importId, file.storedName))));
+	// A retry starts from clean job output while retaining the already imported source files.
+	await rm(jobDirectory, { recursive: true, force: true });
 	await mkdir(sourceDirectory, { recursive: true });
 	logger.debug('Job directory', jobDirectory);
 	await updateJobStatus(jobDirectory, {
@@ -124,25 +139,29 @@ export async function createMovie(importId, files, vibe, targetMinutes) {
 		message: 'Preparing the local editing job'
 	});
 	const concurrency = Math.max(1, Math.min(Number(process.env.VIDEO_CONCURRENCY) || 2, 4));
-	const [videos, music, fonts] = await Promise.all([
+	const preparation = await Promise.allSettled([
 		processVideos(files, concurrency, (file, index) =>
 			processVideo(file, index, files, importId, jobDirectory, sourceDirectory)
 		),
 		prepareMusicLibrary(jobDirectory),
 		prepareFontLibrary(jobDirectory)
 	]);
+	const failed = preparation.find((task) => task.status === 'rejected');
+	// Keep retries isolated from preparation work that might otherwise still be writing.
+	if (failed) throw failed.reason;
+	const [videos, music, fonts] = preparation.map((task) => task.value);
 
 	const edit = await runEditingAgent(videos, vibe, targetMinutes, jobDirectory, music, fonts);
 	const clips = normalizeClips(edit.clips, videos);
 	if (!clips.length) throw new Error('The editor could not find any usable clips');
 
 	const result = {
-		id,
+		id: importId,
 		title: edit.title,
 		summary: edit.summary,
 		duration: await getDuration(path.join(jobDirectory, 'vlogger-cut.mp4')),
 		clips: clips.map((clip) => ({ ...clip, fileName: videos[clip.fileIndex].name })),
-		downloadUrl: `/api/jobs/${id}/video`
+		downloadUrl: `/api/jobs/${importId}/video`
 	};
 	await writeFile(path.join(jobDirectory, 'result.json'), JSON.stringify(result, null, 2));
 	await updateJobStatus(jobDirectory, { phase: 'complete', message: 'Your first cut is ready' });

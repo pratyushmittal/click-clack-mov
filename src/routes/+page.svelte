@@ -2,7 +2,12 @@
 	import FileDropzone from '$lib/components/FileDropzone.svelte';
 	import MovieResult from '$lib/components/MovieResult.svelte';
 	import ProcessingStage from '$lib/components/ProcessingStage.svelte';
-	import { createMovie, getMovieStatus } from '$lib/js/movie-maker.js';
+	import {
+		createMovie,
+		getMovieStatus,
+		importMovieFile,
+		startMoviePreprocessing
+	} from '$lib/js/movie-maker.js';
 
 	let files = $state([]);
 	let vibe = $state('');
@@ -14,7 +19,7 @@
 	let processingSeconds = $state(0);
 	let error = $state('');
 	let result = $state(null);
-	let importLabel = $state('');
+	let importId = $state('');
 	let activeJobId = $state('');
 	let jobStatus = $state({});
 
@@ -83,24 +88,45 @@
 		});
 	}
 
+	function updateFile(id, update) {
+		files = files.map((item) => (item.id === id ? { ...item, ...update } : item));
+	}
+
+	async function prepareFile(item, currentImportId) {
+		try {
+			const durationTask = readDuration(item.file).then((duration) =>
+				updateFile(item.id, { duration })
+			);
+			const imported = await importMovieFile(currentImportId, item.file);
+			try {
+				await startMoviePreprocessing(currentImportId, imported.file);
+			} catch (err) {
+				// Preprocessing is speculative; the movie pipeline retries it after submission.
+				console.error(`Could not preprocess ${item.file.name}`, err);
+			}
+			updateFile(item.id, { importedFile: imported.file });
+			await durationTask;
+		} catch (err) {
+			error = err.message || `Could not prepare ${item.file.name}.`;
+		}
+	}
+
 	async function addFiles(newFiles) {
+		const currentImportId = importId || crypto.randomUUID();
 		const additions = newFiles.map((file) => ({
 			id: crypto.randomUUID(),
 			file,
-			duration: Number.NaN
+			duration: Number.NaN,
+			importedFile: null
 		}));
+		importId = currentImportId;
 		files = [...files, ...additions];
 		error = '';
 
-		for (let index = 0; index < additions.length; index += 4) {
-			// Large selections should not create an unbounded number of video decoders.
+		for (let index = 0; index < additions.length; index += 2) {
+			// Limit concurrent local copies and browser video decoders for large selections.
 			await Promise.all(
-				additions.slice(index, index + 4).map(async (item) => {
-					const duration = await readDuration(item.file);
-					files = files.map((current) =>
-						current.id === item.id ? { ...current, duration } : current
-					);
-				})
+				additions.slice(index, index + 2).map((item) => prepareFile(item, currentImportId))
 			);
 		}
 
@@ -132,8 +158,8 @@
 		// A double click can arrive before the processing view replaces the form.
 		if (processing) return;
 		if (!files.length) return (error = 'Drop in at least one video first.');
-		if (files.some((item) => !Number.isFinite(item.duration))) {
-			return (error = 'Wait until the video lengths have been read.');
+		if (files.some((item) => !Number.isFinite(item.duration) || !item.importedFile)) {
+			return (error = 'Wait until the videos have finished importing.');
 		}
 		if (vibe.trim().length < 3) return (error = 'Tell us what kind of moments you want to keep.');
 
@@ -145,12 +171,10 @@
 
 		try {
 			const data = await createMovie({
-				files: files.map((item) => item.file),
+				importId,
+				files: files.map((item) => item.importedFile),
 				vibe: vibe.trim(),
 				targetMinutes: targetSeconds ? targetSeconds / 60 : null,
-				onImport: (index, total, fileName) => {
-					importLabel = index < total ? `Importing ${index + 1} of ${total}: ${fileName}` : '';
-				},
 				onJob: (jobId) => void followJob(jobId)
 			});
 			processingSeconds = (Date.now() - processingStartedAt) / 1000;
@@ -161,12 +185,12 @@
 			activeJobId = '';
 			processing = false;
 			processingStartedAt = 0;
-			importLabel = '';
 		}
 	}
 
 	function reset() {
 		files = [];
+		importId = '';
 		vibe = '';
 		targetSeconds = 0;
 		targetEdited = false;
@@ -210,7 +234,7 @@
 						{files}
 						startedAt={processingStartedAt}
 						status={jobStatus}
-						message={importLabel || jobStatus.message || 'Preparing your footage'}
+						message={jobStatus.message || 'Preparing your footage'}
 					/>
 				{:else}
 					<FileDropzone {files} onAdd={addFiles} onRemove={removeFile} />

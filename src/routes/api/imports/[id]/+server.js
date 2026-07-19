@@ -4,11 +4,11 @@ import { mkdir, rm } from 'node:fs/promises';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
+import { importIdSchema, importsRoot } from '$lib/server/imported-file.js';
 import { apiError, apiSuccess } from '$lib/server/api-response.js';
 import { createLogger } from '$lib/server/logger.js';
 
 const logger = createLogger('Import/Create');
-const importsRoot = path.resolve('.vlogger/imports');
 
 function safeFileName(fileName) {
 	return fileName.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-180) || 'video';
@@ -18,7 +18,7 @@ export async function POST({ params, request, url }) {
 	let filePath;
 
 	try {
-		if (!/^[a-f0-9-]{36}$/.test(params.id)) return apiError('Invalid import ID', 400);
+		if (!importIdSchema.safeParse(params.id).success) return apiError('Invalid import ID', 400);
 		if (!request.body) return apiError('The selected video was empty', 400);
 
 		const fileName = url.searchParams.get('fileName') || 'video';
